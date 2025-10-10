@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "KoeMoji-Go Web",
+  "version": "1.0.0",
+  "description": "Web会議専用AI文字起こし・要約Chrome拡張機能",
+
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+
+  "host_permissions": [
+    "*://meet.google.com/*",
+    "*://*.zoom.us/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "*://meet.google.com/*",
+        "*://*.zoom.us/*"
+      ],
+      "js": ["content.js"]
+    }
+  ],
+
+  "options_page": "settings/settings.html"
+}
