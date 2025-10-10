@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KoeMoji-Go Web</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- ヘッダー -->
+    <header class="popup-header">
+      <h1 class="popup-header__title">🎙️ KoeMoji-Go Web</h1>
+      <p class="popup-header__subtitle">Web会議 文字起こし・要約</p>
+    </header>
+
+    <!-- 録音コントロール -->
+    <section class="recording-section">
+      <div class="recording-status" id="recordingStatus">
+        <span class="status-indicator" id="statusIndicator"></span>
+        <span class="status-text" id="statusText">準備完了</span>
+      </div>
+
+      <div class="recording-time" id="recordingTime">
+        <span class="time-display">00:00:00</span>
+      </div>
+
+      <div class="recording-controls">
+        <button id="startBtn" class="btn btn-primary btn-large">
+          <span class="btn-icon">🔴</span>
+          <span class="btn-text">録音開始</span>
+        </button>
+        <button id="stopBtn" class="btn btn-secondary btn-large" style="display: none;">
+          <span class="btn-icon">⏹️</span>
+          <span class="btn-text">停止 & 文字起こし</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 文字起こし結果 -->
+    <section class="transcript-section" id="transcriptSection" style="display: none;">
+      <h2 class="section-title">📝 文字起こし結果</h2>
+
+      <div class="transcript-meta">
+        <span class="meta-item">
+          <strong>日時:</strong> <span id="transcriptDate">-</span>
+        </span>
+        <span class="meta-item">
+          <strong>時間:</strong> <span id="transcriptDuration">-</span>
+        </span>
+      </div>
+
+      <div class="transcript-content">
+        <div class="transcript-text" id="transcriptText">
+          処理中...
+        </div>
+      </div>
+
+      <div class="summary-content" id="summaryContent" style="display: none;">
+        <h3 class="subsection-title">📋 AI要約</h3>
+        <div class="summary-text" id="summaryText">
+          生成中...
+        </div>
+      </div>
+
+      <div class="transcript-actions">
+        <button id="copyBtn" class="btn btn-small">
+          <span class="btn-icon">📋</span>
+          コピー
+        </button>
+        <button id="downloadBtn" class="btn btn-small">
+          <span class="btn-icon">💾</span>
+          ダウンロード
+        </button>
+        <button id="deleteBtn" class="btn btn-small btn-danger">
+          <span class="btn-icon">🗑️</span>
+          削除
+        </button>
+      </div>
+    </section>
+
+    <!-- 履歴 -->
+    <section class="history-section">
+      <div class="section-header">
+        <h2 class="section-title">📚 履歴</h2>
+        <button id="refreshHistoryBtn" class="btn btn-icon-only">
+          <span>🔄</span>
+        </button>
+      </div>
+
+      <div class="history-list" id="historyList">
+        <p class="empty-message">録音履歴がありません</p>
+      </div>
+    </section>
+
+    <!-- フッター -->
+    <footer class="popup-footer">
+      <button id="settingsBtn" class="btn btn-text">
+        <span class="btn-icon">⚙️</span>
+        設定
+      </button>
+      <span class="version">v1.0.0</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
