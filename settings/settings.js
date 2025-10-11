@@ -5,6 +5,7 @@ const apiKeyInput = document.getElementById('apiKey');
 const recordingDeviceSelect = document.getElementById('recordingDevice');
 const languageSelect = document.getElementById('language');
 const autoSummarizeCheckbox = document.getElementById('autoSummarize');
+const summaryModelSelect = document.getElementById('summaryModel');
 const summaryPromptTextarea = document.getElementById('summaryPrompt');
 const testBtn = document.getElementById('testBtn');
 const saveBtn = document.getElementById('saveBtn');
@@ -36,6 +37,7 @@ async function loadSettings() {
       apiKeyInput.value = settings.apiKey || '';
       languageSelect.value = settings.language || 'ja';
       autoSummarizeCheckbox.checked = settings.autoSummarize !== false;
+      summaryModelSelect.value = settings.summaryModel || 'gpt-4o-mini';
       summaryPromptTextarea.value = settings.summaryPrompt || '';
 
       // 録音デバイスは後で設定
@@ -90,6 +92,7 @@ async function handleSave() {
     const recordingDevice = recordingDeviceSelect.value;
     const language = languageSelect.value;
     const autoSummarize = autoSummarizeCheckbox.checked;
+    const summaryModel = summaryModelSelect.value;
     const summaryPrompt = summaryPromptTextarea.value.trim();
 
     console.log('Saving settings:', {
@@ -97,6 +100,7 @@ async function handleSave() {
       recordingDevice,
       language,
       autoSummarize,
+      summaryModel,
       hasSummaryPrompt: !!summaryPrompt
     });
 
@@ -125,6 +129,7 @@ async function handleSave() {
       recordingDevice,
       language,
       autoSummarize,
+      summaryModel,
       summaryPrompt
     };
 
