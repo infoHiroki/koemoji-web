@@ -29,8 +29,46 @@ let currentTranscript = null;
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('Popup initialized');
   await loadHistory();
+  await checkRecordingStatus(); // 録音状態を確認
   setupEventListeners();
 });
+
+// 録音状態を確認（ポップアップ再オープン時）
+async function checkRecordingStatus() {
+  try {
+    console.log('Checking recording status...');
+
+    const response = await chrome.runtime.sendMessage({
+      action: 'getRecordingStatus'
+    });
+
+    if (response && response.success && response.isRecording) {
+      console.log('Recording in progress, restoring UI state');
+
+      // 録音中の状態を復元
+      isRecording = true;
+
+      // 録音開始時刻を計算（現在時刻 - 録音時間）
+      recordingStartTime = Date.now() - (response.duration * 1000);
+
+      // UI更新
+      updateRecordingUI(true);
+
+      // タイマー開始
+      startRecordingTimer();
+
+      console.log('Recording state restored:', {
+        duration: response.duration,
+        startTime: new Date(recordingStartTime).toISOString()
+      });
+    } else {
+      console.log('No recording in progress');
+    }
+  } catch (error) {
+    console.error('Failed to check recording status:', error);
+    // エラーは無視（録音中でない場合も正常）
+  }
+}
 
 // イベントリスナーの設定
 function setupEventListeners() {
