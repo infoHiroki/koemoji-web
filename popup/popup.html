@@ -51,23 +51,32 @@
       </div>
 
       <div class="transcript-content">
+        <div class="content-header">
+          <h3 class="content-title">文字起こし</h3>
+          <button id="copyTranscriptBtn" class="btn btn-small btn-text">
+            <span class="btn-icon">📋</span>
+            コピー
+          </button>
+        </div>
         <div class="transcript-text" id="transcriptText">
           処理中...
         </div>
       </div>
 
       <div class="summary-content" id="summaryContent" style="display: none;">
-        <h3 class="subsection-title">📋 AI要約</h3>
+        <div class="content-header">
+          <h3 class="subsection-title">📋 AI要約</h3>
+          <button id="copySummaryBtn" class="btn btn-small btn-text">
+            <span class="btn-icon">📋</span>
+            コピー
+          </button>
+        </div>
         <div class="summary-text" id="summaryText">
           生成中...
         </div>
       </div>
 
       <div class="transcript-actions">
-        <button id="copyBtn" class="btn btn-small">
-          <span class="btn-icon">📋</span>
-          コピー
-        </button>
         <button id="downloadBtn" class="btn btn-small">
           <span class="btn-icon">💾</span>
           ダウンロード
@@ -103,6 +112,7 @@
     </footer>
   </div>
 
+  <script src="marked.min.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

@@ -12,7 +12,8 @@ const transcriptDuration = document.getElementById('transcriptDuration');
 const transcriptText = document.getElementById('transcriptText');
 const summaryContent = document.getElementById('summaryContent');
 const summaryText = document.getElementById('summaryText');
-const copyBtn = document.getElementById('copyBtn');
+const copyTranscriptBtn = document.getElementById('copyTranscriptBtn');
+const copySummaryBtn = document.getElementById('copySummaryBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const deleteBtn = document.getElementById('deleteBtn');
 const historyList = document.getElementById('historyList');
@@ -77,7 +78,8 @@ function setupEventListeners() {
   stopBtn.addEventListener('click', handleStopRecording);
 
   // 文字起こし結果のアクション
-  copyBtn.addEventListener('click', handleCopy);
+  copyTranscriptBtn.addEventListener('click', handleCopyTranscript);
+  copySummaryBtn.addEventListener('click', handleCopySummary);
   downloadBtn.addEventListener('click', handleDownload);
   deleteBtn.addEventListener('click', handleDelete);
 
@@ -197,14 +199,27 @@ function showTranscriptSection(show) {
   transcriptSection.style.display = show ? 'block' : 'none';
 }
 
-// コピー
-async function handleCopy() {
+// 文字起こしをコピー
+async function handleCopyTranscript() {
   try {
-    const text = buildCopyText();
+    const text = transcriptText.textContent;
     await navigator.clipboard.writeText(text);
-    showNotification('クリップボードにコピーしました');
+    showNotification('文字起こしをコピーしました');
   } catch (error) {
-    console.error('Failed to copy:', error);
+    console.error('Failed to copy transcript:', error);
+    showError('コピーに失敗しました');
+  }
+}
+
+// AI要約をコピー
+async function handleCopySummary() {
+  try {
+    // 元のマークダウンテキストをコピー（currentTranscriptから取得）
+    const text = currentTranscript && currentTranscript.summary ? currentTranscript.summary : summaryText.textContent;
+    await navigator.clipboard.writeText(text);
+    showNotification('AI要約をコピーしました');
+  } catch (error) {
+    console.error('Failed to copy summary:', error);
     showError('コピーに失敗しました');
   }
 }
@@ -322,11 +337,18 @@ function displayTranscript(transcript) {
 
   transcriptDate.textContent = formatDate(transcript.timestamp);
   transcriptDuration.textContent = formatDuration(transcript.duration);
+
+  // 文字起こしを表示（プレーンテキスト）
   transcriptText.textContent = transcript.transcript || '文字起こし結果がありません';
 
   if (transcript.summary) {
     summaryContent.style.display = 'block';
-    summaryText.textContent = transcript.summary;
+    // マークダウンをHTMLに変換して表示
+    if (typeof marked !== 'undefined') {
+      summaryText.innerHTML = marked.parse(transcript.summary);
+    } else {
+      summaryText.textContent = transcript.summary;
+    }
   } else {
     summaryContent.style.display = 'none';
   }

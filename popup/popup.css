@@ -253,6 +253,22 @@ body {
   margin-bottom: 10px;
 }
 
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.content-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
 .transcript-text {
   font-size: 12px;
   line-height: 1.6;
@@ -263,25 +279,26 @@ body {
 
 .summary-content {
   margin-top: 10px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 3px;
+  padding: 10px;
 }
 
 .subsection-title {
   font-size: 13px;
   font-weight: 600;
-  margin-bottom: 8px;
+  margin: 0;
   color: #333;
 }
 
 .summary-text {
-  background: #fffbeb;
-  border: 1px solid #fcd34d;
-  border-radius: 3px;
-  padding: 10px;
   font-size: 12px;
   line-height: 1.6;
   color: #333;
   white-space: pre-wrap;
   word-break: break-word;
+  margin-top: 8px;
 }
 
 .transcript-actions {
@@ -289,6 +306,9 @@ body {
   gap: 6px;
   justify-content: flex-start;
   flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
 }
 
 /* 履歴セクション */
@@ -378,4 +398,70 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #aaa;
+}
+
+/* マークダウン表示用スタイル */
+.summary-text h1,
+.summary-text h2,
+.summary-text h3,
+.summary-text h4 {
+  margin-top: 12px;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #333;
+}
+
+.summary-text h1 { font-size: 14px; }
+.summary-text h2 { font-size: 13px; }
+.summary-text h3 { font-size: 12px; }
+.summary-text h4 { font-size: 11px; }
+
+.summary-text p {
+  margin-bottom: 8px;
+}
+
+.summary-text ul,
+.summary-text ol {
+  margin-left: 20px;
+  margin-bottom: 8px;
+}
+
+.summary-text li {
+  margin-bottom: 4px;
+}
+
+.summary-text code {
+  background: #f0f0f0;
+  padding: 2px 4px;
+  border-radius: 2px;
+  font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+  font-size: 11px;
+}
+
+.summary-text pre {
+  background: #f0f0f0;
+  padding: 8px;
+  border-radius: 3px;
+  overflow-x: auto;
+  margin-bottom: 8px;
+}
+
+.summary-text pre code {
+  background: none;
+  padding: 0;
+}
+
+.summary-text strong {
+  font-weight: 600;
+}
+
+.summary-text em {
+  font-style: italic;
+}
+
+.summary-text blockquote {
+  border-left: 3px solid #ddd;
+  padding-left: 12px;
+  margin-left: 0;
+  color: #666;
 }
