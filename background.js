@@ -272,11 +272,19 @@ async function handleStopRecording(message) {
 
     // プラットフォーム検出
     const platform = await detectPlatform();
-    const platformName = getPlatformName(platform);
+
+    // タイトル生成（日付のみ、秒数なし）
+    const dateStr = new Date().toLocaleString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
     // 文字起こし結果を作成（処理中状態）
     const transcript = Storage.createTranscript({
-      title: `${platformName} - ${new Date().toLocaleString('ja-JP')}`,
+      title: dateStr,
       duration: duration,
       audioSize: audioBlob.size,
       platform: platform
@@ -345,11 +353,19 @@ async function handleTranscribeAudio(message) {
 
     // プラットフォーム検出
     const platform = await detectPlatform();
-    const platformName = getPlatformName(platform);
+
+    // タイトル生成（日付のみ、秒数なし）
+    const dateStr = new Date().toLocaleString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
     // 文字起こし結果を作成（処理中状態）
     const transcript = Storage.createTranscript({
-      title: `${platformName} - ${new Date().toLocaleString('ja-JP')}`,
+      title: dateStr,
       duration: duration,
       audioSize: audioBlob.size,
       platform: platform

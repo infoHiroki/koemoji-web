@@ -541,6 +541,16 @@ function startEditingTitle(titleElement, transcript) {
   });
 }
 
+// ファイル名として安全な文字列に変換
+function sanitizeFilename(filename) {
+  // ファイル名として使用できない文字を置換
+  return filename
+    .replace(/[/\\?%*:|"<>]/g, '-')  // 特殊文字をハイフンに
+    .replace(/\s+/g, '_')             // スペースをアンダースコアに
+    .replace(/\.+$/, '')              // 末尾のドットを削除
+    .trim();
+}
+
 // ダウンロード処理
 function downloadTranscript(transcript) {
   try {
@@ -557,7 +567,9 @@ function downloadTranscript(transcript) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `transcript_${new Date(transcript.timestamp).toISOString().slice(0, 10)}.txt`;
+    // タイトルをファイル名に使用
+    const filename = sanitizeFilename(transcript.title || 'transcript');
+    a.download = `${filename}.txt`;
     a.click();
     URL.revokeObjectURL(url);
     showNotification('ダウンロードしました');
