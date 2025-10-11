@@ -2,15 +2,10 @@
 
 // ライブラリのインポート（Service Workerではimportを使用）
 importScripts(
-  'lib/audio-recorder.js',
   'lib/audio-encoder.js',
   'lib/openai-client.js',
   'lib/storage.js'
 );
-
-// グローバル状態
-let audioRecorder = null;
-let currentRecordingData = null;
 
 // インストール時
 chrome.runtime.onInstalled.addListener((details) => {
@@ -35,11 +30,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleMessage(message, sender) {
   try {
     switch (message.action) {
-      case 'startRecording':
-        return await handleStartRecording(message);
-
-      case 'stopRecording':
-        return await handleStopRecording(message);
+      case 'transcribeAudio':
+        return await handleTranscribeAudio(message);
 
       case 'getTranscripts':
         return await handleGetTranscripts(message);
@@ -65,54 +57,10 @@ async function handleMessage(message, sender) {
   }
 }
 
-// 録音開始
-async function handleStartRecording(message) {
+// 文字起こし処理を開始
+async function handleTranscribeAudio(message) {
   try {
-    // 設定を読み込み
-    const settings = await Storage.loadSettings();
-
-    if (!settings.recordingDevice) {
-      throw new Error('録音デバイスが設定されていません。設定画面で録音デバイスを選択してください。');
-    }
-
-    // AudioRecorderを初期化
-    audioRecorder = new AudioRecorder();
-
-    // 録音開始
-    await audioRecorder.start(settings.recordingDevice);
-
-    // 録音データを初期化
-    currentRecordingData = {
-      startTime: Date.now(),
-      platform: await detectPlatform()
-    };
-
-    console.log('Recording started successfully');
-
-    return {
-      success: true
-    };
-  } catch (error) {
-    console.error('Failed to start recording:', error);
-    throw error;
-  }
-}
-
-// 録音停止 & 文字起こし
-async function handleStopRecording(message) {
-  try {
-    if (!audioRecorder || !audioRecorder.isRecording()) {
-      throw new Error('録音が開始されていません');
-    }
-
-    // 録音停止
-    const audioBlob = await audioRecorder.stop();
-    const duration = audioRecorder.getDuration();
-
-    console.log('Recording stopped:', {
-      size: audioBlob.size,
-      duration
-    });
+    const { audioBlob: audioBase64, duration } = message;
 
     // 設定を読み込み
     const settings = await Storage.loadSettings();
@@ -121,12 +69,18 @@ async function handleStopRecording(message) {
       throw new Error('APIキーが設定されていません。設定画面でAPIキーを入力してください。');
     }
 
+    // Base64からBlobに変換
+    const audioBlob = await base64ToBlob(audioBase64);
+
+    // プラットフォーム検出
+    const platform = await detectPlatform();
+
     // 文字起こし結果を作成（処理中状態）
     const transcript = Storage.createTranscript({
-      title: `${currentRecordingData.platform} 会議 - ${new Date().toLocaleString('ja-JP')}`,
+      title: `${platform} 会議 - ${new Date().toLocaleString('ja-JP')}`,
       duration: duration,
       audioSize: audioBlob.size,
-      platform: currentRecordingData.platform
+      platform: platform
     });
 
     // 保存
@@ -140,9 +94,15 @@ async function handleStopRecording(message) {
       transcriptId: transcript.id
     };
   } catch (error) {
-    console.error('Failed to stop recording:', error);
+    console.error('Failed to start transcription:', error);
     throw error;
   }
+}
+
+// Base64をBlobに変換
+async function base64ToBlob(base64) {
+  const response = await fetch(base64);
+  return await response.blob();
 }
 
 // 文字起こし処理（非同期）
