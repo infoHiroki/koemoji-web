@@ -2,7 +2,8 @@
   "manifest_version": 3,
   "name": "KoeMoji-Go Web",
   "version": "1.0.0",
-  "description": "Web会議専用AI文字起こし・要約Chrome拡張機能",
+  "description": "Web会議の音声を自動で文字起こし・AI要約。Google Meet・Zoom対応。OpenAI Whisper + GPT-4による高精度な文字起こしと要約を実現します。",
+  "author": "koemoji2024@gmail.com",
 
   "permissions": [
     "storage",
