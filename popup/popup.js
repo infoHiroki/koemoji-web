@@ -273,6 +273,10 @@ async function handleDelete() {
     if (response.success) {
       currentTranscript = null;
       showTranscriptSection(false);
+      // すべての履歴アイテムのactiveクラスを削除
+      document.querySelectorAll('.history-item').forEach(item => {
+        item.classList.remove('active');
+      });
       await loadHistory();
       showNotification('削除しました');
     } else {
@@ -333,6 +337,17 @@ function displayHistory(transcripts) {
 
 // 文字起こし結果表示
 function displayTranscript(transcript) {
+  // 既に同じ文字起こしを表示している場合はトグル（閉じる）
+  if (currentTranscript && currentTranscript.id === transcript.id) {
+    currentTranscript = null;
+    showTranscriptSection(false);
+    // すべての履歴アイテムのactiveクラスを削除
+    document.querySelectorAll('.history-item').forEach(item => {
+      item.classList.remove('active');
+    });
+    return;
+  }
+
   currentTranscript = transcript;
 
   transcriptDate.textContent = formatDate(transcript.timestamp);
@@ -354,6 +369,15 @@ function displayTranscript(transcript) {
   }
 
   showTranscriptSection(true);
+
+  // すべての履歴アイテムのactiveクラスを削除してから、選択されたアイテムに追加
+  document.querySelectorAll('.history-item').forEach(item => {
+    item.classList.remove('active');
+  });
+  const selectedItem = document.querySelector(`.history-item[data-id="${transcript.id}"]`);
+  if (selectedItem) {
+    selectedItem.classList.add('active');
+  }
 
   // スクロール
   transcriptSection.scrollIntoView({ behavior: 'smooth' });
@@ -379,9 +403,14 @@ function handleMessage(message, sender, sendResponse) {
 // 文字起こし完了
 function handleTranscriptionComplete(data) {
   currentTranscript = data;
-  displayTranscript(data);
+
+  // まず履歴を更新
+  loadHistory().then(() => {
+    // 履歴更新後に表示（activeクラスも適用される）
+    displayTranscript(data);
+  });
+
   statusText.textContent = '文字起こし完了';
-  loadHistory();
 }
 
 // 要約完了

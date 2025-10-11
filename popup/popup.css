@@ -12,14 +12,14 @@ body {
   line-height: 1.6;
   color: #333;
   background: #fff;
-  width: 380px;
-  min-height: 500px;
+  width: 450px;
+  min-height: 600px;
 }
 
 /* コンテナ */
 .popup-container {
   background: #fff;
-  min-height: 500px;
+  min-height: 600px;
 }
 
 /* ヘッダー */
@@ -344,6 +344,12 @@ body {
 .history-item:hover {
   background: #f9f9f9;
   border-color: #2196f3;
+}
+
+.history-item.active {
+  background: #e3f2fd;
+  border-color: #2196f3;
+  border-width: 2px;
 }
 
 .history-item__title {
