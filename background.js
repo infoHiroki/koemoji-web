@@ -12,15 +12,27 @@ let offscreenDocumentCreated = false;
 
 // オフスクリーンドキュメントを作成
 async function createOffscreenDocument() {
-  // 既に存在するか確認
-  const existingContexts = await chrome.runtime.getContexts({
-    contextTypes: ['OFFSCREEN_DOCUMENT']
-  });
-
-  if (existingContexts.length > 0) {
-    console.log('Offscreen document already exists');
-    offscreenDocumentCreated = true;
+  // 既にフラグが立っている場合はスキップ
+  if (offscreenDocumentCreated) {
+    console.log('Offscreen document already marked as created');
     return;
+  }
+
+  try {
+    // 既に存在するか確認（Chrome 116+）
+    if (chrome.runtime.getContexts) {
+      const existingContexts = await chrome.runtime.getContexts({
+        contextTypes: ['OFFSCREEN_DOCUMENT']
+      });
+
+      if (existingContexts.length > 0) {
+        console.log('Offscreen document already exists');
+        offscreenDocumentCreated = true;
+        return;
+      }
+    }
+  } catch (error) {
+    console.log('getContexts not available, continuing with create');
   }
 
   try {
@@ -32,6 +44,12 @@ async function createOffscreenDocument() {
     offscreenDocumentCreated = true;
     console.log('Offscreen document created');
   } catch (error) {
+    // "Only a single offscreen document" エラーの場合は既に存在する
+    if (error.message && error.message.includes('Only a single offscreen document')) {
+      console.log('Offscreen document already exists (caught error)');
+      offscreenDocumentCreated = true;
+      return;
+    }
     console.error('Failed to create offscreen document:', error);
     throw error;
   }
@@ -40,15 +58,17 @@ async function createOffscreenDocument() {
 // オフスクリーンドキュメントを閉じる
 async function closeOffscreenDocument() {
   try {
-    // 実際に存在するか確認
-    const existingContexts = await chrome.runtime.getContexts({
-      contextTypes: ['OFFSCREEN_DOCUMENT']
-    });
+    // 実際に存在するか確認（Chrome 116+）
+    if (chrome.runtime.getContexts) {
+      const existingContexts = await chrome.runtime.getContexts({
+        contextTypes: ['OFFSCREEN_DOCUMENT']
+      });
 
-    if (existingContexts.length === 0) {
-      console.log('No offscreen document to close');
-      offscreenDocumentCreated = false;
-      return;
+      if (existingContexts.length === 0) {
+        console.log('No offscreen document to close');
+        offscreenDocumentCreated = false;
+        return;
+      }
     }
 
     await chrome.offscreen.closeDocument();
@@ -96,14 +116,22 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
   // 既存のオフスクリーンドキュメントをクリーンアップ
   try {
-    const existingContexts = await chrome.runtime.getContexts({
-      contextTypes: ['OFFSCREEN_DOCUMENT']
-    });
+    // Chrome 116+の場合
+    if (chrome.runtime.getContexts) {
+      const existingContexts = await chrome.runtime.getContexts({
+        contextTypes: ['OFFSCREEN_DOCUMENT']
+      });
 
-    if (existingContexts.length > 0) {
-      console.log('Cleaning up existing offscreen document');
+      if (existingContexts.length > 0) {
+        console.log('Cleaning up existing offscreen document');
+        await chrome.offscreen.closeDocument();
+        offscreenDocumentCreated = false;
+      }
+    } else {
+      // それ以外の場合は閉じるだけ試す
       await chrome.offscreen.closeDocument();
       offscreenDocumentCreated = false;
+      console.log('Cleaned up offscreen document');
     }
   } catch (error) {
     console.log('No offscreen document to clean up');
