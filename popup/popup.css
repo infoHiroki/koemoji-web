@@ -365,19 +365,22 @@ body {
   gap: 6px;
 }
 
-.history-item__title:hover .edit-title-btn {
-  opacity: 1;
-}
-
 .edit-title-btn {
-  opacity: 0;
-  transition: opacity 0.2s;
+  display: none;
   font-size: 11px;
   cursor: pointer;
   padding: 2px 4px;
   background: transparent;
   border: none;
   color: #666;
+}
+
+.history-item.active .edit-title-btn {
+  display: block;
+}
+
+.history-item.active .history-item__title:hover .edit-title-btn {
+  color: #2196f3;
 }
 
 .edit-title-btn:hover {
