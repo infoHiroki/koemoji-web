@@ -5,6 +5,7 @@ const apiKeyInput = document.getElementById('apiKey');
 const recordingDeviceSelect = document.getElementById('recordingDevice');
 const languageSelect = document.getElementById('language');
 const autoSummarizeCheckbox = document.getElementById('autoSummarize');
+const summaryPromptTextarea = document.getElementById('summaryPrompt');
 const testBtn = document.getElementById('testBtn');
 const saveBtn = document.getElementById('saveBtn');
 
@@ -35,6 +36,7 @@ async function loadSettings() {
       apiKeyInput.value = settings.apiKey || '';
       languageSelect.value = settings.language || 'ja';
       autoSummarizeCheckbox.checked = settings.autoSummarize !== false;
+      summaryPromptTextarea.value = settings.summaryPrompt || '';
 
       // 録音デバイスは後で設定
       if (settings.recordingDevice) {
@@ -88,12 +90,14 @@ async function handleSave() {
     const recordingDevice = recordingDeviceSelect.value;
     const language = languageSelect.value;
     const autoSummarize = autoSummarizeCheckbox.checked;
+    const summaryPrompt = summaryPromptTextarea.value.trim();
 
     console.log('Saving settings:', {
       hasApiKey: !!apiKey,
       recordingDevice,
       language,
-      autoSummarize
+      autoSummarize,
+      hasSummaryPrompt: !!summaryPrompt
     });
 
     // バリデーション
@@ -120,7 +124,8 @@ async function handleSave() {
       apiKey,
       recordingDevice,
       language,
-      autoSummarize
+      autoSummarize,
+      summaryPrompt
     };
 
     console.log('Sending saveSettings message:', settingsToSave);

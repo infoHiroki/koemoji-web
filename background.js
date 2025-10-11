@@ -386,8 +386,12 @@ async function generateSummary(transcriptId, transcriptText, settings) {
     // OpenAI Clientを初期化
     const client = new OpenAIClient(settings.apiKey);
 
-    // 要約生成
-    const result = await client.summarize(transcriptText);
+    // 要約生成（カスタムプロンプトがあれば使用）
+    const options = {};
+    if (settings.summaryPrompt) {
+      options.customPrompt = settings.summaryPrompt;
+    }
+    const result = await client.summarize(transcriptText, options);
 
     console.log('Summary generated');
 
