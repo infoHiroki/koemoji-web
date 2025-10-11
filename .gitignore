@@ -1,42 +1,49 @@
-# OS
+# macOS
 .DS_Store
-Thumbs.db
+.AppleDouble
+.LSOverride
 
-# Editor
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# Node modules (future use)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Chrome Extension
+*.crx
+*.pem
+*.zip
 
 # Build
 dist/
 build/
-*.zip
 
 # Logs
 *.log
 
 # Temporary files
-tmp/
-temp/
-.cache/
+*.tmp
+*.temp
+*_old.*
+*_backup.*
 
-# Chrome Extension
-*.pem
-*.crx
-
-# API Keys (never commit!)
-config.local.json
-.env
-.env.local
-
-# Test files
-coverage/
-.nyc_output/
+# API Keys (additional protection)
+*-key.json
+credentials.json
