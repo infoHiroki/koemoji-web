@@ -153,7 +153,12 @@ async function handleStopRecording() {
     }
   } catch (error) {
     console.error('Failed to stop recording:', error);
-    showError('録音の停止に失敗しました: ' + error.message);
+
+    // エラー時はUIを録音停止状態に戻す
+    isRecording = false;
+    updateRecordingUI(false);
+
+    showError(error.message || '録音の停止に失敗しました');
   }
 }
 

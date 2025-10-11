@@ -247,6 +247,11 @@ async function handleStartRecording(message) {
 // 録音停止
 async function handleStopRecording(message) {
   try {
+    // オフスクリーンドキュメントが存在するか確認
+    if (!offscreenDocumentCreated) {
+      throw new Error('録音が開始されていません。まず「録音開始」ボタンを押してください。');
+    }
+
     // オフスクリーンドキュメントに録音停止を要求
     const response = await sendMessageToOffscreen({
       action: 'stopRecording'
