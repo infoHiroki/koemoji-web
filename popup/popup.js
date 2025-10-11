@@ -1,8 +1,5 @@
 // popup.js - メインUI制御
 
-// 音声録音インスタンス
-let audioRecorder = null;
-
 // DOM要素の取得
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
@@ -63,37 +60,25 @@ async function handleStartRecording() {
   try {
     console.log('Starting recording...');
 
-    // 設定を読み込み
-    const settingsResponse = await chrome.runtime.sendMessage({
-      action: 'getSettings'
+    // バックグラウンドスクリプトに録音開始を要求
+    const response = await chrome.runtime.sendMessage({
+      action: 'startRecording'
     });
 
-    if (!settingsResponse.success) {
-      throw new Error('設定の読み込みに失敗しました');
+    if (response.success) {
+      isRecording = true;
+      recordingStartTime = Date.now();
+
+      // UI更新
+      updateRecordingUI(true);
+
+      // タイマー開始
+      startRecordingTimer();
+
+      console.log('Recording started successfully');
+    } else {
+      throw new Error(response.error || '録音の開始に失敗しました');
     }
-
-    const settings = settingsResponse.settings;
-
-    if (!settings.recordingDevice) {
-      throw new Error('録音デバイスが設定されていません。設定画面で録音デバイスを選択してください。');
-    }
-
-    // AudioRecorderを初期化
-    audioRecorder = new AudioRecorder();
-
-    // 録音開始
-    await audioRecorder.start(settings.recordingDevice);
-
-    isRecording = true;
-    recordingStartTime = Date.now();
-
-    // UI更新
-    updateRecordingUI(true);
-
-    // タイマー開始
-    startRecordingTimer();
-
-    console.log('Recording started successfully');
   } catch (error) {
     console.error('Failed to start recording:', error);
     showError('録音の開始に失敗しました: ' + error.message);
@@ -105,56 +90,31 @@ async function handleStopRecording() {
   try {
     console.log('Stopping recording...');
 
-    if (!audioRecorder || !audioRecorder.isRecording()) {
-      throw new Error('録音が開始されていません');
-    }
-
     // タイマー停止
     stopRecordingTimer();
 
-    // 録音停止
-    const audioBlob = await audioRecorder.stop();
-    const duration = audioRecorder.getDuration();
-
-    console.log('Recording stopped:', {
-      size: audioBlob.size,
-      duration
-    });
-
-    isRecording = false;
-
-    // UI更新
-    updateRecordingUI(false);
-    showTranscriptSection(true);
-
-    // 文字起こし処理中表示
-    transcriptText.textContent = '文字起こし処理中...';
-    statusText.textContent = '処理中...';
-
-    // バックグラウンドスクリプトに音声データを送信して文字起こし
+    // バックグラウンドスクリプトに録音停止を要求
     const response = await chrome.runtime.sendMessage({
-      action: 'transcribeAudio',
-      audioBlob: await blobToBase64(audioBlob),
-      duration: duration
+      action: 'stopRecording'
     });
 
-    if (!response.success) {
-      throw new Error(response.error || '文字起こしの開始に失敗しました');
+    if (response.success) {
+      isRecording = false;
+
+      // UI更新
+      updateRecordingUI(false);
+      showTranscriptSection(true);
+
+      // 文字起こし処理中表示
+      transcriptText.textContent = '文字起こし処理中...';
+      statusText.textContent = '処理中...';
+    } else {
+      throw new Error(response.error || '録音の停止に失敗しました');
     }
   } catch (error) {
     console.error('Failed to stop recording:', error);
     showError('録音の停止に失敗しました: ' + error.message);
   }
-}
-
-// BlobをBase64に変換
-async function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
 }
 
 // 録音タイマー開始

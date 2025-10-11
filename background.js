@@ -7,6 +7,44 @@ importScripts(
   'lib/storage.js'
 );
 
+// オフスクリーンドキュメントの状態
+let offscreenDocumentCreated = false;
+
+// オフスクリーンドキュメントを作成
+async function createOffscreenDocument() {
+  if (offscreenDocumentCreated) {
+    return;
+  }
+
+  try {
+    await chrome.offscreen.createDocument({
+      url: 'offscreen.html',
+      reasons: ['USER_MEDIA'],
+      justification: 'Recording audio from virtual audio device'
+    });
+    offscreenDocumentCreated = true;
+    console.log('Offscreen document created');
+  } catch (error) {
+    console.error('Failed to create offscreen document:', error);
+    throw error;
+  }
+}
+
+// オフスクリーンドキュメントを閉じる
+async function closeOffscreenDocument() {
+  if (!offscreenDocumentCreated) {
+    return;
+  }
+
+  try {
+    await chrome.offscreen.closeDocument();
+    offscreenDocumentCreated = false;
+    console.log('Offscreen document closed');
+  } catch (error) {
+    console.error('Failed to close offscreen document:', error);
+  }
+}
+
 // インストール時
 chrome.runtime.onInstalled.addListener((details) => {
   console.log('Extension installed:', details.reason);
@@ -30,6 +68,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleMessage(message, sender) {
   try {
     switch (message.action) {
+      case 'startRecording':
+        return await handleStartRecording(message);
+
+      case 'stopRecording':
+        return await handleStopRecording(message);
+
+      case 'getRecordingStatus':
+        return await handleGetRecordingStatus(message);
+
       case 'transcribeAudio':
         return await handleTranscribeAudio(message);
 
@@ -57,7 +104,124 @@ async function handleMessage(message, sender) {
   }
 }
 
-// 文字起こし処理を開始
+// 録音開始
+async function handleStartRecording(message) {
+  try {
+    // 設定を読み込み
+    const settings = await Storage.loadSettings();
+
+    if (!settings.recordingDevice) {
+      throw new Error('録音デバイスが設定されていません。設定画面で録音デバイスを選択してください。');
+    }
+
+    // オフスクリーンドキュメントを作成
+    await createOffscreenDocument();
+
+    // オフスクリーンドキュメントに録音開始を要求
+    const response = await chrome.runtime.sendMessage({
+      action: 'startRecording',
+      deviceId: settings.recordingDevice
+    });
+
+    if (!response.success) {
+      throw new Error(response.error || '録音の開始に失敗しました');
+    }
+
+    console.log('Recording started in offscreen document');
+
+    return {
+      success: true
+    };
+  } catch (error) {
+    console.error('Failed to start recording:', error);
+    throw error;
+  }
+}
+
+// 録音停止
+async function handleStopRecording(message) {
+  try {
+    // オフスクリーンドキュメントに録音停止を要求
+    const response = await chrome.runtime.sendMessage({
+      action: 'stopRecording'
+    });
+
+    if (!response.success) {
+      throw new Error(response.error || '録音の停止に失敗しました');
+    }
+
+    const { audioBlob: audioBase64, duration } = response;
+
+    console.log('Recording stopped, starting transcription');
+
+    // 設定を読み込み
+    const settings = await Storage.loadSettings();
+
+    if (!settings.apiKey) {
+      throw new Error('APIキーが設定されていません。設定画面でAPIキーを入力してください。');
+    }
+
+    // Base64からBlobに変換
+    const audioBlob = await base64ToBlob(audioBase64);
+
+    // プラットフォーム検出
+    const platform = await detectPlatform();
+
+    // 文字起こし結果を作成（処理中状態）
+    const transcript = Storage.createTranscript({
+      title: `${platform} 会議 - ${new Date().toLocaleString('ja-JP')}`,
+      duration: duration,
+      audioSize: audioBlob.size,
+      platform: platform
+    });
+
+    // 保存
+    await Storage.saveTranscript(transcript);
+
+    // 非同期で文字起こし処理を開始
+    transcribeAudio(audioBlob, transcript.id, settings);
+
+    // オフスクリーンドキュメントを閉じる
+    await closeOffscreenDocument();
+
+    return {
+      success: true,
+      transcriptId: transcript.id
+    };
+  } catch (error) {
+    console.error('Failed to stop recording:', error);
+    throw error;
+  }
+}
+
+// 録音状態を取得
+async function handleGetRecordingStatus(message) {
+  try {
+    if (!offscreenDocumentCreated) {
+      return {
+        success: true,
+        isRecording: false,
+        duration: 0
+      };
+    }
+
+    // オフスクリーンドキュメントから状態を取得
+    const response = await chrome.runtime.sendMessage({
+      action: 'getRecordingStatus'
+    });
+
+    return response;
+  } catch (error) {
+    console.error('Failed to get recording status:', error);
+    return {
+      success: true,
+      isRecording: false,
+      duration: 0
+    };
+  }
+}
+
+// 文字起こし処理を開始（popup.jsから直接呼ばれる場合用）
 async function handleTranscribeAudio(message) {
   try {
     const { audioBlob: audioBase64, duration } = message;
