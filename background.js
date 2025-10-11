@@ -1,5 +1,9 @@
 // background.js - バックグラウンドスクリプト
 
+// 定数
+const OFFSCREEN_INIT_DELAY = 100; // ms - オフスクリーンドキュメント初期化待機時間
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB - Whisper APIの制限
+
 // ライブラリのインポート（Service Workerではimportを使用）
 importScripts(
   'lib/audio-encoder.js',
@@ -225,7 +229,7 @@ async function handleStartRecording(message) {
 
     // オフスクリーンドキュメントに録音開始を要求
     // 少し待ってからメッセージを送信（offscreen documentの初期化待ち）
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, OFFSCREEN_INIT_DELAY));
 
     const response = await sendMessageToOffscreen({
       action: 'startRecording',
@@ -417,9 +421,7 @@ async function transcribeAudio(audioBlob, transcriptId, settings) {
     });
 
     // ファイルサイズチェック（25MB超える場合はエラー）
-    const maxSize = 25 * 1024 * 1024;
-
-    if (audioBlob.size > maxSize) {
+    if (audioBlob.size > MAX_FILE_SIZE) {
       throw new Error(
         `ファイルサイズが大きすぎます（${(audioBlob.size / 1024 / 1024).toFixed(1)}MB）。` +
         `録音時間を短くしてください（推奨: 10分以内）。`
