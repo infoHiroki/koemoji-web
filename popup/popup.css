@@ -502,6 +502,10 @@ body {
 }
 
 /* マークダウン表示（履歴内） */
+.history-summary-text > *:first-child {
+  margin-top: 0;
+}
+
 .history-summary-text h1,
 .history-summary-text h2,
 .history-summary-text h3,
@@ -518,17 +522,19 @@ body {
 .history-summary-text h4 { font-size: 11px; }
 
 .history-summary-text p {
+  margin-top: 0;
   margin-bottom: 6px;
 }
 
 .history-summary-text ul,
 .history-summary-text ol {
+  margin-top: 4px;
   margin-left: 16px;
   margin-bottom: 6px;
 }
 
 .history-summary-text li {
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 
 .history-summary-text code {
@@ -586,6 +592,10 @@ body {
 }
 
 /* マークダウン表示用スタイル */
+.summary-text > *:first-child {
+  margin-top: 0;
+}
+
 .summary-text h1,
 .summary-text h2,
 .summary-text h3,
@@ -602,17 +612,19 @@ body {
 .summary-text h4 { font-size: 11px; }
 
 .summary-text p {
+  margin-top: 0;
   margin-bottom: 8px;
 }
 
 .summary-text ul,
 .summary-text ol {
+  margin-top: 4px;
   margin-left: 20px;
   margin-bottom: 8px;
 }
 
 .summary-text li {
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .summary-text code {

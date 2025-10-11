@@ -340,6 +340,12 @@ function displayHistory(transcripts) {
 
   // マークダウンをレンダリング
   if (typeof marked !== 'undefined') {
+    // marked.jsの設定
+    marked.setOptions({
+      breaks: false,  // 単一改行を<br>に変換しない
+      gfm: true       // GitHub Flavored Markdownを使用
+    });
+
     document.querySelectorAll('.history-summary-text').forEach(elem => {
       const summaryMarkdown = elem.dataset.summary;
       if (summaryMarkdown) {
@@ -616,6 +622,10 @@ function displayTranscript(transcript) {
     summaryContent.style.display = 'block';
     // マークダウンをHTMLに変換して表示
     if (typeof marked !== 'undefined') {
+      marked.setOptions({
+        breaks: false,
+        gfm: true
+      });
       summaryText.innerHTML = marked.parse(transcript.summary);
     } else {
       summaryText.textContent = transcript.summary;
