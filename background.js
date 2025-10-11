@@ -39,16 +39,24 @@ async function createOffscreenDocument() {
 
 // オフスクリーンドキュメントを閉じる
 async function closeOffscreenDocument() {
-  if (!offscreenDocumentCreated) {
-    return;
-  }
-
   try {
+    // 実際に存在するか確認
+    const existingContexts = await chrome.runtime.getContexts({
+      contextTypes: ['OFFSCREEN_DOCUMENT']
+    });
+
+    if (existingContexts.length === 0) {
+      console.log('No offscreen document to close');
+      offscreenDocumentCreated = false;
+      return;
+    }
+
     await chrome.offscreen.closeDocument();
     offscreenDocumentCreated = false;
     console.log('Offscreen document closed');
   } catch (error) {
     console.error('Failed to close offscreen document:', error);
+    offscreenDocumentCreated = false;
   }
 }
 
@@ -77,13 +85,28 @@ async function sendMessageToOffscreen(message) {
   });
 }
 
-// インストール時
-chrome.runtime.onInstalled.addListener((details) => {
+// インストール時・更新時
+chrome.runtime.onInstalled.addListener(async (details) => {
   console.log('Extension installed:', details.reason);
 
   if (details.reason === 'install') {
     // 初回インストール時の処理
     console.log('First time installation');
+  }
+
+  // 既存のオフスクリーンドキュメントをクリーンアップ
+  try {
+    const existingContexts = await chrome.runtime.getContexts({
+      contextTypes: ['OFFSCREEN_DOCUMENT']
+    });
+
+    if (existingContexts.length > 0) {
+      console.log('Cleaning up existing offscreen document');
+      await chrome.offscreen.closeDocument();
+      offscreenDocumentCreated = false;
+    }
+  } catch (error) {
+    console.log('No offscreen document to clean up');
   }
 });
 
