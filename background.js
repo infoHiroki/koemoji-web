@@ -52,8 +52,14 @@ async function sendMessageToOffscreen(message) {
     throw new Error('Offscreen document not created');
   }
 
+  // offscreen宛であることを明示
+  const offscreenMessage = {
+    ...message,
+    target: 'offscreen'
+  };
+
   return new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage(message, (response) => {
+    chrome.runtime.sendMessage(offscreenMessage, (response) => {
       if (chrome.runtime.lastError) {
         console.error('Error sending message to offscreen:', chrome.runtime.lastError);
         reject(chrome.runtime.lastError);
@@ -76,7 +82,12 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 // メッセージリスナー
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('Received message:', message.action);
+  console.log('Background received message:', message);
+
+  // offscreen宛のメッセージは無視
+  if (message.target === 'offscreen') {
+    return false;
+  }
 
   // 非同期処理のため、trueを返す
   handleMessage(message, sender).then(sendResponse);

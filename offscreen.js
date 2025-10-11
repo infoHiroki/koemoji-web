@@ -7,7 +7,12 @@ let audioRecorder = null;
 
 // メッセージリスナー
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('Offscreen received message:', message.action);
+  console.log('Offscreen received message:', message);
+
+  // offscreen宛のメッセージのみ処理
+  if (message.target !== 'offscreen') {
+    return false; // このメッセージは処理しない
+  }
 
   handleMessage(message).then(sendResponse).catch(error => {
     console.error('Error handling message:', error);
