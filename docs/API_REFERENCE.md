@@ -101,7 +101,7 @@ async stop(): Promise<Blob>
 ```
 
 **戻り値:**
-- `Blob`: 録音された音声データ (audio/wav)
+- `Blob`: 録音された音声データ (audio/webm または audio/wav)
 
 **使用例:**
 ```javascript
@@ -178,36 +178,41 @@ const wavBlob = AudioEncoder.encodeWAV(audioBuffer, 44100, 1);
 console.log('WAV size:', wavBlob.size);
 ```
 
-##### `compressAudio(audioBlob, options)`
+##### `AudioEncoder.encode(audioBlob, options)`
 
-音声データを圧縮します。
+音声Blobを指定形式に変換します。
 
 ```javascript
-async compressAudio(
+static async encode(
   audioBlob: Blob,
   options: {
-    bitrate?: number,      // kbps (デフォルト: 64)
-    sampleRate?: number,   // Hz (デフォルト: 16000)
-    channels?: number      // 1 or 2 (デフォルト: 1)
+    format?: string,   // 'webm' | 'wav' (デフォルト: 'webm')
+    quality?: string   // 'low' | 'medium' | 'high' (デフォルト: 'medium')
   } = {}
 ): Promise<Blob>
 ```
 
 **パラメータ:**
-- `audioBlob` (Blob): 圧縮する音声データ
-- `options` (Object): 圧縮オプション
+- `audioBlob` (Blob): 元の音声データ
+- `options` (Object): エンコードオプション
+  - `format`: 出力形式（'webm'はそのまま返す、'wav'はWAVに変換）
+  - `quality`: 品質設定（将来の拡張用）
 
 **戻り値:**
-- `Blob`: 圧縮された音声データ
+- `Blob`: エンコードされた音声データ
 
 **使用例:**
 ```javascript
-const compressed = await AudioEncoder.compressAudio(audioBlob, {
-  bitrate: 32,      // 32kbps
-  sampleRate: 16000, // 16kHz
-  channels: 1        // モノラル
+// WebM形式（そのまま）
+const webm = await AudioEncoder.encode(audioBlob, {
+  format: 'webm'
 });
-console.log('Original:', audioBlob.size, 'Compressed:', compressed.size);
+
+// WAV形式に変換
+const wav = await AudioEncoder.encode(audioBlob, {
+  format: 'wav'
+});
+console.log('WebM:', webm.size, 'WAV:', wav.size);
 ```
 
 ##### `splitAudio(audioBlob, chunkDuration)`
@@ -281,9 +286,9 @@ async transcribe(
 ```
 
 **エラー:**
-- `APIError`: APIキーが無効
-- `FileSizeError`: ファイルサイズが25MBを超える
-- `NetworkError`: ネットワークエラー
+- APIキーが無効な場合: `Error('APIキーが無効です。設定を確認してください。')`
+- ファイルサイズが25MBを超える場合: `Error('ファイルサイズが大きすぎます...')`
+- ネットワークエラー: `Error(...)`
 
 **使用例:**
 ```javascript
@@ -294,9 +299,7 @@ try {
   });
   console.log('Transcript:', result.text);
 } catch (error) {
-  if (error instanceof FileSizeError) {
-    console.error('File too large, please split the audio');
-  }
+  console.error('Transcription failed:', error.message);
 }
 ```
 
@@ -308,7 +311,7 @@ try {
 async summarize(
   transcript: string,
   options: {
-    model?: string,           // GPTモデル (デフォルト: 'gpt-4')
+    model?: string,           // GPTモデル (デフォルト: 'gpt-4o-mini')
     maxTokens?: number,       // 最大トークン数 (デフォルト: 1000)
     temperature?: number,     // 0-2 (デフォルト: 0.7)
     customPrompt?: string     // カスタムプロンプト
@@ -334,11 +337,10 @@ async summarize(
 **使用例:**
 ```javascript
 const result = await client.summarize(transcript, {
-  model: 'gpt-4-turbo',
+  model: 'gpt-4o-mini',
   temperature: 0.5
 });
 console.log('Summary:', result.summary);
-console.log('Action items:', result.actionItems);
 ```
 
 ##### `estimateCost(audioBlob, transcriptLength)`
@@ -472,6 +474,125 @@ async deleteTranscript(id: string): Promise<void>
 **パラメータ:**
 - `id` (string): 削除する文字起こしのID
 
+##### `updateTranscript(id, updates)`
+
+文字起こし結果を更新します。
+
+```javascript
+async updateTranscript(
+  id: string,
+  updates: Partial<Transcript>
+): Promise<void>
+```
+
+**パラメータ:**
+- `id` (string): 更新する文字起こしのID
+- `updates` (Object): 更新する項目（部分的なTranscriptオブジェクト）
+
+**使用例:**
+```javascript
+await Storage.updateTranscript('abc123', {
+  title: '新しいタイトル',
+  summary: 'AI要約結果...'
+});
+```
+
+##### `getTranscript(id)`
+
+特定の文字起こし結果を取得します。
+
+```javascript
+async getTranscript(id: string): Promise<Transcript | null>
+```
+
+**パラメータ:**
+- `id` (string): 取得する文字起こしのID
+
+**戻り値:**
+- `Transcript | null`: 文字起こし結果、見つからない場合はnull
+
+##### `clearAll()`
+
+すべてのデータをクリアします。
+
+```javascript
+async clearAll(): Promise<void>
+```
+
+**使用例:**
+```javascript
+await Storage.clearAll();
+console.log('All data cleared');
+```
+
+##### `getStorageUsage()`
+
+ストレージ使用量を取得します。
+
+```javascript
+async getStorageUsage(): Promise<{
+  local: { bytes: number, mb: string },
+  sync: { bytes: number, mb: string }
+}>
+```
+
+**戻り値:**
+```javascript
+{
+  local: {
+    bytes: 1048576,
+    mb: "1.00"
+  },
+  sync: {
+    bytes: 512,
+    mb: "0.00"
+  }
+}
+```
+
+##### `generateUUID()`
+
+UUIDを生成します。
+
+```javascript
+static generateUUID(): string
+```
+
+**戻り値:**
+- `string`: UUID v4形式の文字列
+
+##### `createTranscript(data)`
+
+文字起こしオブジェクトを作成します。
+
+```javascript
+static createTranscript(data: {
+  title?: string,
+  duration?: number,
+  transcript?: string,
+  summary?: string,
+  audioSize?: number,
+  platform?: string
+}): Transcript
+```
+
+**パラメータ:**
+- `data` (Object): 文字起こしデータ
+
+**戻り値:**
+- `Transcript`: 完全な文字起こしオブジェクト（IDとタイムスタンプが自動生成される）
+
+**使用例:**
+```javascript
+const transcript = Storage.createTranscript({
+  title: 'Team Meeting',
+  duration: 1800,
+  audioSize: 15728640,
+  platform: 'google-meet'
+});
+console.log(transcript.id); // "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
+```
+
 ---
 
 ## OpenAI API統合
@@ -539,7 +660,7 @@ const response = await fetch('https://api.openai.com/v1/chat/completions', {
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
-    model: 'gpt-4-turbo',
+    model: 'gpt-4o-mini',
     messages: [
       {
         role: 'system',
@@ -578,6 +699,12 @@ const response = await fetch('https://api.openai.com/v1/chat/completions', {
 ```
 
 #### 料金
+
+> **注意**: 最新の料金は[OpenAI Pricing](https://openai.com/pricing)を確認してください。
+
+**GPT-4o Mini（推奨）:**
+- Input: $0.00015 / 1K tokens
+- Output: $0.0006 / 1K tokens
 
 **GPT-4 Turbo:**
 - Input: $0.01 / 1K tokens
@@ -619,12 +746,27 @@ await chrome.storage.local.remove('key');
 
 #### メッセージ送信
 
+**Promiseベース（推奨）:**
 ```javascript
 // popup.js → background.js
+const response = await chrome.runtime.sendMessage({
+  action: 'startRecording',
+  deviceId: 'abc123'
+});
+console.log('Response:', response);
+```
+
+**コールバックベース（Service Worker環境）:**
+```javascript
+// background.js内でのメッセージ送信
 chrome.runtime.sendMessage(
   { action: 'startRecording', deviceId: 'abc123' },
   (response) => {
-    console.log('Response:', response);
+    if (chrome.runtime.lastError) {
+      console.error('Error:', chrome.runtime.lastError);
+    } else {
+      console.log('Response:', response);
+    }
   }
 );
 ```
@@ -635,11 +777,17 @@ chrome.runtime.sendMessage(
 // background.js
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'startRecording') {
-    startRecording(message.deviceId);
-    sendResponse({ success: true });
+    // 非同期処理の場合
+    handleMessage(message).then(sendResponse);
+    return true; // 非同期応答を有効化
   }
-  return true; // 非同期応答の場合
 });
+
+async function handleMessage(message) {
+  // 非同期処理
+  await startRecording(message.deviceId);
+  return { success: true };
+}
 ```
 
 ---
@@ -668,7 +816,7 @@ interface Transcript {
   transcript: string;          // 文字起こし結果
   summary?: string;            // AI要約（オプション）
   audioSize: number;           // 音声ファイルサイズ（バイト）
-  platform: 'google-meet' | 'zoom';  // プラットフォーム
+  platform: 'google-meet' | 'zoom' | 'unknown';  // プラットフォーム
 }
 ```
 
@@ -696,27 +844,53 @@ interface SummaryResult {
 
 ---
 
-## エラーコード
+## エラーハンドリング
+
+すべてのエラーは標準の`Error`クラスを使用します。
 
 ### AudioRecorder
 
-- `NOT_ALLOWED_ERROR`: マイク権限がない
-- `NOT_FOUND_ERROR`: デバイスが見つからない
-- `NOT_READABLE_ERROR`: デバイスが使用中
-- `RECORDING_NOT_STARTED`: 録音が開始されていない
+エラーは`error.name`プロパティで識別できます：
+- `NotAllowedError`: マイク権限がない
+- `NotFoundError`: デバイスが見つからない
+- `NotReadableError`: デバイスが使用中
+
+```javascript
+try {
+  await recorder.start(deviceId);
+} catch (error) {
+  if (error.name === 'NotAllowedError') {
+    console.error('マイクへのアクセス権限がありません');
+  }
+}
+```
 
 ### OpenAIClient
 
-- `API_KEY_INVALID`: APIキーが無効
-- `FILE_SIZE_ERROR`: ファイルサイズが制限を超える
-- `NETWORK_ERROR`: ネットワークエラー
-- `RATE_LIMIT_ERROR`: レート制限エラー
-- `QUOTA_EXCEEDED`: API利用制限超過
+エラーは`error.message`で内容を確認します：
+- APIキー無効: "APIキーが無効です。設定を確認してください。"
+- レート制限: "APIのレート制限に達しました..."
+- ファイルサイズ超過: "ファイルサイズが大きすぎます。"
+
+```javascript
+try {
+  await client.transcribe(audioBlob);
+} catch (error) {
+  console.error('Transcription error:', error.message);
+}
+```
 
 ### Storage
 
-- `QUOTA_EXCEEDED`: ストレージ容量超過
-- `PERMISSION_DENIED`: アクセス権限なし
+エラーは標準の`Error`として投げられます：
+
+```javascript
+try {
+  await Storage.saveTranscript(transcript);
+} catch (error) {
+  console.error('Storage error:', error.message);
+}
+```
 
 ---
 
