@@ -45,6 +45,25 @@ async function closeOffscreenDocument() {
   }
 }
 
+// オフスクリーンドキュメントにメッセージを送信
+async function sendMessageToOffscreen(message) {
+  // offscreen documentが作成されているか確認
+  if (!offscreenDocumentCreated) {
+    throw new Error('Offscreen document not created');
+  }
+
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(message, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('Error sending message to offscreen:', chrome.runtime.lastError);
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve(response);
+      }
+    });
+  });
+}
+
 // インストール時
 chrome.runtime.onInstalled.addListener((details) => {
   console.log('Extension installed:', details.reason);
@@ -118,13 +137,16 @@ async function handleStartRecording(message) {
     await createOffscreenDocument();
 
     // オフスクリーンドキュメントに録音開始を要求
-    const response = await chrome.runtime.sendMessage({
+    // 少し待ってからメッセージを送信（offscreen documentの初期化待ち）
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    const response = await sendMessageToOffscreen({
       action: 'startRecording',
       deviceId: settings.recordingDevice
     });
 
-    if (!response.success) {
-      throw new Error(response.error || '録音の開始に失敗しました');
+    if (!response || !response.success) {
+      throw new Error(response?.error || '録音の開始に失敗しました');
     }
 
     console.log('Recording started in offscreen document');
@@ -142,7 +164,7 @@ async function handleStartRecording(message) {
 async function handleStopRecording(message) {
   try {
     // オフスクリーンドキュメントに録音停止を要求
-    const response = await chrome.runtime.sendMessage({
+    const response = await sendMessageToOffscreen({
       action: 'stopRecording'
     });
 
@@ -206,7 +228,7 @@ async function handleGetRecordingStatus(message) {
     }
 
     // オフスクリーンドキュメントから状態を取得
-    const response = await chrome.runtime.sendMessage({
+    const response = await sendMessageToOffscreen({
       action: 'getRecordingStatus'
     });
 
@@ -277,36 +299,28 @@ async function transcribeAudio(audioBlob, transcriptId, settings) {
     // OpenAI Clientを初期化
     const client = new OpenAIClient(settings.apiKey);
 
-    // WAV形式に変換（Whisper APIはWAVを推奨）
-    let processedBlob = audioBlob;
-    if (audioBlob.type.includes('webm')) {
-      console.log('Converting to WAV...');
-      processedBlob = await AudioEncoder.convertToWAV(audioBlob);
-    }
+    // Whisper APIはWebMも対応しているので、そのまま送信
+    // （Service WorkerではAudioContextが使えないためWAV変換をスキップ）
+    console.log('Transcribing audio blob:', {
+      type: audioBlob.type,
+      size: audioBlob.size
+    });
 
-    // ファイルサイズチェック（25MB超える場合は分割）
+    // ファイルサイズチェック（25MB超える場合はエラー）
     const maxSize = 25 * 1024 * 1024;
-    let transcriptText = '';
 
-    if (processedBlob.size > maxSize) {
-      console.log('Audio file too large, splitting...');
-      const chunks = await AudioEncoder.splitAudio(processedBlob, 600); // 10分ごと
-
-      // 各チャンクを文字起こし
-      for (let i = 0; i < chunks.length; i++) {
-        console.log(`Transcribing chunk ${i + 1}/${chunks.length}...`);
-        const result = await client.transcribe(chunks[i], {
-          language: settings.language
-        });
-        transcriptText += result.text + '\n\n';
-      }
-    } else {
-      // 通常の文字起こし
-      const result = await client.transcribe(processedBlob, {
-        language: settings.language
-      });
-      transcriptText = result.text;
+    if (audioBlob.size > maxSize) {
+      throw new Error(
+        `ファイルサイズが大きすぎます（${(audioBlob.size / 1024 / 1024).toFixed(1)}MB）。` +
+        `録音時間を短くしてください（推奨: 10分以内）。`
+      );
     }
+
+    // 文字起こし
+    const result = await client.transcribe(audioBlob, {
+      language: settings.language
+    });
+    const transcriptText = result.text;
 
     console.log('Transcription completed');
 
