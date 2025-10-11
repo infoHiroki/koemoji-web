@@ -1,10 +1,10 @@
-# KoeMoji-Go Web アーキテクチャ
+# 🏗️ KoeMoji-Go Web アーキテクチャ
 
-## 概要
+## 📋 概要
 
 KoeMoji-Go WebはChrome拡張機能として動作する、Web会議専用の文字起こし・要約ツールです。
 
-## システム構成
+## 🎯 システム構成
 
 ### コアコンポーネント
 
@@ -42,7 +42,7 @@ KoeMoji-Go WebはChrome拡張機能として動作する、Web会議専用の文
    └─────────┘
 ```
 
-## プロジェクト構造
+## 📁 プロジェクト構造
 
 ```
 koemoji-web/
@@ -77,9 +77,9 @@ koemoji-web/
     └── API_REFERENCE.md
 ```
 
-## データフロー
+## 🔄 データフロー
 
-### 1. 録音フロー
+### 1. 🎙️ 録音フロー
 
 ```
 User Action (Click Record)
@@ -112,7 +112,7 @@ audio-encoder.js
     └─> Blob生成
 ```
 
-### 2. 文字起こし・要約フロー
+### 2. 📝 文字起こし・要約フロー
 
 ```
 Audio Blob
@@ -147,9 +147,9 @@ popup.js
     └─> UI表示更新
 ```
 
-## コンポーネント詳細
+## 🎯 コンポーネント詳細
 
-### 1. Background Script (background.js)
+### 1. ⚙️ Background Script (background.js)
 
 **役割:**
 - Chrome拡張のバックグラウンド処理
@@ -171,7 +171,7 @@ saveTranscript(data)
 loadTranscripts()
 ```
 
-### 2. Audio Recorder (lib/audio-recorder.js)
+### 2. 🎵 Audio Recorder (lib/audio-recorder.js)
 
 **役割:**
 - 音声デバイスの列挙
@@ -205,7 +205,7 @@ stopRecording()
 getAudioBlob()
 ```
 
-### 3. Audio Encoder (lib/audio-encoder.js)
+### 3. 🔊 Audio Encoder (lib/audio-encoder.js)
 
 **役割:**
 - 音声データのエンコード
@@ -224,7 +224,7 @@ encodeMP3(audioBuffer)
 compressAudio(audioBlob, options)
 ```
 
-### 4. OpenAI Client (lib/openai-client.js)
+### 4. 🤖 OpenAI Client (lib/openai-client.js)
 
 **役割:**
 - OpenAI API統合
@@ -271,7 +271,7 @@ async summarize(transcript, prompt) {
 }
 ```
 
-### 5. Storage (lib/storage.js)
+### 5. 💾 Storage (lib/storage.js)
 
 **役割:**
 - データの永続化
@@ -318,9 +318,9 @@ async saveApiKey(apiKey)
 async getApiKey()
 ```
 
-## セキュリティ設計
+## 🔒 セキュリティ設計
 
-### 1. APIキー管理
+### 1. 🔑 APIキー管理
 
 **保存場所:**
 - `chrome.storage.sync` - 暗号化されたストレージ
@@ -330,7 +330,7 @@ async getApiKey()
 - Background scriptのみアクセス可能
 - Popup/Content scriptからは直接アクセス不可
 
-### 2. データプライバシー
+### 2. 🛡️ データプライバシー
 
 **ローカル保存:**
 - 文字起こし結果は `chrome.storage.local` に保存
@@ -340,7 +340,7 @@ async getApiKey()
 - ユーザーが明示的に削除可能
 - Chrome拡張アンインストール時に自動削除
 
-### 3. 権限最小化
+### 3. ✅ 権限最小化
 
 **manifest.json permissions:**
 ```json
@@ -356,9 +356,9 @@ async getApiKey()
 }
 ```
 
-## パフォーマンス設計
+## ⚡ パフォーマンス設計
 
-### 1. 音声処理
+### 1. 🎵 音声処理
 
 **録音品質:**
 - サンプリングレート: 44.1kHz（デフォルト）
@@ -376,7 +376,7 @@ async getApiKey()
 - リアルタイム圧縮
 - チャンク分割（長時間会議対応）
 
-### 2. API通信
+### 2. 📡 API通信
 
 **Whisper API制限:**
 - ファイルサイズ: 25MB以下
@@ -386,7 +386,7 @@ async getApiKey()
 - トークン数: 128K（gpt-4-turbo）
 - 対策: 長文は要約を段階的に生成
 
-### 3. メモリ管理
+### 3. 🧠 メモリ管理
 
 **録音中:**
 - ストリーミング録音（メモリ蓄積なし）
@@ -396,9 +396,9 @@ async getApiKey()
 - 音声データは即座に破棄
 - テキストデータのみ保存
 
-## エラーハンドリング
+## ⚠️ エラーハンドリング
 
-### 1. 録音エラー
+### 1. 🎙️ 録音エラー
 
 **症状:**
 - デバイスアクセス失敗
@@ -419,7 +419,7 @@ try {
 }
 ```
 
-### 2. API エラー
+### 2. 📡 API エラー
 
 **症状:**
 - ネットワークエラー
@@ -445,9 +445,9 @@ try {
 }
 ```
 
-## 拡張性
+## 🚀 拡張性
 
-### 将来の機能拡張
+### 💡 将来の機能拡張
 
 1. **話者識別**
    - DOM監視による話者名取得
@@ -465,27 +465,27 @@ try {
    - 外部ストレージ統合
    - チーム共有機能
 
-## 技術スタック
+## 🛠️ 技術スタック
 
-### フロントエンド
+### 💻 フロントエンド
 - **HTML5/CSS3** - UI構築
 - **Vanilla JavaScript** - ロジック実装
 - **Chrome Extension API** - 拡張機能制御
 
-### 音声処理
+### 🎵 音声処理
 - **Web Audio API** - 音声キャプチャ・処理
 - **MediaRecorder API** - 録音機能
 - **WAV Encoder** - 音声エンコード
 
-### API統合
+### 🤖 API統合
 - **OpenAI Whisper API** - 音声認識
 - **OpenAI GPT-4 API** - AI要約
 
-### データ管理
+### 💾 データ管理
 - **chrome.storage API** - ローカルストレージ
 - **IndexedDB** - 大容量データ（将来）
 
-## 開発原則
+## 📐 開発原則
 
 ### YAGNI（You Aren't Gonna Need It）
 - 必要な機能のみ実装
@@ -499,7 +499,7 @@ try {
 - シンプルな設計
 - 複雑性の最小化
 
-## 参考資料
+## 📚 参考資料
 
 - [Chrome Extension API](https://developer.chrome.com/docs/extensions/)
 - [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)

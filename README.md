@@ -15,42 +15,42 @@ KoeMoji-Go Webは、Google MeetやZoomなどのWeb会議を自動で文字起こ
 - ⚡ **ワンクリック録音** - 会議中に簡単操作
 - 🌐 **Web会議対応** - Google Meet、Zoom（ブラウザ版）対応
 
-## クイックスタート
+## 🚀 クイックスタート
 
-### 前提条件
+### 📦 インストール
+
+#### 1. Chrome Web Storeからインストール
+
+> **注意**: Chrome Web Store公開準備中です。現在は開発版のみ利用可能です。
+
+**Chrome Web Store公開後:**
+1. [KoeMoji-Go Web - Chrome Web Store](https://chrome.google.com/webstore/) にアクセス
+2. 「Chromeに追加」ボタンをクリック
+3. 確認ダイアログで「拡張機能を追加」をクリック
+
+#### 2. セットアップ
 
 **重要**: マイクとシステム音声を同時録音するため、仮想オーディオデバイスのセットアップが必要です。
 
-#### macOS
+##### macOS
 - **BlackHole** 2ch のインストール
 - Audio MIDI設定で集約デバイス作成
 
-#### Windows
+##### Windows
 - **VoiceMeeter** のインストール
 - 音声ルーティング設定
 
-詳細は [セットアップガイド](docs/SETUP_GUIDE.md) をご覧ください。
+📖 詳細は [セットアップガイド](docs/SETUP_GUIDE.md) をご覧ください。
 
-### インストール
+#### 3. OpenAI APIキーの設定
 
-1. **Chrome拡張機能のインストール**
-   ```bash
-   # GitHubからダウンロード
-   git clone https://github.com/infoHiroki/koemoji-web.git
-   cd koemoji-web
-   ```
+1. 拡張機能アイコン（🎙️）をクリック
+2. 「⚙️ 設定」を開く
+3. OpenAI APIキーを入力
+4. 録音デバイスを選択（BlackHole/VoiceMeeter）
+5. 「設定を保存」をクリック
 
-2. **Chromeに読み込み**
-   - Chrome拡張機能ページを開く: `chrome://extensions/`
-   - 「デベロッパーモード」を有効化
-   - 「パッケージ化されていない拡張機能を読み込む」
-   - `koemoji-web` フォルダを選択
-
-3. **OpenAI APIキーの設定**
-   - 拡張機能アイコンをクリック
-   - ⚙️ Settings を開く
-   - OpenAI APIキーを入力
-   - [APIキー取得方法](https://platform.openai.com/api-keys)
+🔑 [OpenAI APIキーの取得方法](https://platform.openai.com/api-keys)
 
 ### 基本的な使い方
 
@@ -151,20 +151,28 @@ KoeMoji-Go Webは、Google MeetやZoomなどのWeb会議を自動で文字起こ
 2. APIキーの利用制限を確認
 3. ネットワーク接続を確認
 
-## 開発
+## 💻 開発者向け
 
-### 開発環境
+### 開発版のインストール
 
-```bash
-# リポジトリをクローン
-git clone https://github.com/infoHiroki/koemoji-web.git
-cd koemoji-web
+**開発者またはChrome Web Store公開前のテストユーザー向け:**
 
-# Chrome拡張として読み込み
-# chrome://extensions/ でデベロッパーモードを有効化
-```
+1. **リポジトリをクローン**
+   ```bash
+   git clone https://github.com/infoHiroki/koemoji-web.git
+   cd koemoji-web
+   ```
 
-詳細は [開発ガイド](docs/DEVELOPMENT.md) を参照。
+2. **Chrome拡張として読み込み**
+   - Chrome拡張機能ページを開く: `chrome://extensions/`
+   - 「デベロッパーモード」を有効化
+   - 「パッケージ化されていない拡張機能を読み込む」
+   - `koemoji-web` フォルダを選択
+
+3. **セットアップと設定**
+   - 上記「クイックスタート」の手順2-3に従う
+
+📖 詳細は [開発ガイド](docs/DEVELOPMENT.md) を参照。
 
 ### 技術スタック
 

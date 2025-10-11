@@ -1,8 +1,8 @@
-# API リファレンス
+# 📚 API リファレンス
 
 KoeMoji-Go Webの内部APIとOpenAI API統合の詳細リファレンスです。
 
-## 目次
+## 📋 目次
 
 - [内部API](#内部api)
   - [AudioRecorder](#audiorecorder)
@@ -17,9 +17,9 @@ KoeMoji-Go Webの内部APIとOpenAI API統合の詳細リファレンスです�
 
 ---
 
-## 内部API
+## 🔧 内部API
 
-### AudioRecorder
+### 🎙️ AudioRecorder
 
 音声録音機能を提供するクラス。
 
@@ -146,7 +146,7 @@ console.log(`Recorded ${duration} seconds`);
 
 ---
 
-### AudioEncoder
+### 🔊 AudioEncoder
 
 音声エンコード機能を提供するクラス。
 
@@ -242,7 +242,7 @@ console.log(`Split into ${chunks.length} chunks`);
 
 ---
 
-### OpenAI Client
+### 🤖 OpenAI Client
 
 OpenAI API統合を提供するクラス。
 
@@ -379,7 +379,7 @@ console.log(`Estimated cost: $${cost.total.toFixed(2)}`);
 
 ---
 
-### Storage
+### 💾 Storage
 
 データ永続化を提供するクラス。
 
@@ -595,9 +595,9 @@ console.log(transcript.id); // "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
 
 ---
 
-## OpenAI API統合
+## 🌐 OpenAI API統合
 
-### Whisper API
+### 🎤 Whisper API
 
 #### Endpoint
 
@@ -642,7 +642,7 @@ const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
 
 ---
 
-### GPT-4 API
+### 💬 GPT-4 API
 
 #### Endpoint
 
@@ -716,9 +716,9 @@ const response = await fetch('https://api.openai.com/v1/chat/completions', {
 
 ---
 
-## Chrome Extension API
+## 🔌 Chrome Extension API
 
-### chrome.storage
+### 💾 chrome.storage
 
 #### 保存
 
@@ -742,9 +742,9 @@ const { apiKey } = await chrome.storage.sync.get('apiKey');
 await chrome.storage.local.remove('key');
 ```
 
-### chrome.runtime
+### ⚡ chrome.runtime
 
-#### メッセージ送信
+#### 📨 メッセージ送信
 
 **Promiseベース（推奨）:**
 ```javascript
@@ -771,7 +771,7 @@ chrome.runtime.sendMessage(
 );
 ```
 
-#### メッセージ受信
+#### 📥 メッセージ受信
 
 ```javascript
 // background.js
@@ -792,9 +792,9 @@ async function handleMessage(message) {
 
 ---
 
-## データ構造
+## 📊 データ構造
 
-### Settings
+### ⚙️ Settings
 
 ```typescript
 interface Settings {
@@ -805,7 +805,7 @@ interface Settings {
 }
 ```
 
-### Transcript
+### 📝 Transcript
 
 ```typescript
 interface Transcript {
@@ -820,7 +820,7 @@ interface Transcript {
 }
 ```
 
-### TranscriptionResult
+### 🎯 TranscriptionResult
 
 ```typescript
 interface TranscriptionResult {
@@ -830,7 +830,7 @@ interface TranscriptionResult {
 }
 ```
 
-### SummaryResult
+### 📋 SummaryResult
 
 ```typescript
 interface SummaryResult {
@@ -844,11 +844,11 @@ interface SummaryResult {
 
 ---
 
-## エラーハンドリング
+## ⚠️ エラーハンドリング
 
 すべてのエラーは標準の`Error`クラスを使用します。
 
-### AudioRecorder
+### 🎙️ AudioRecorder
 
 エラーは`error.name`プロパティで識別できます：
 - `NotAllowedError`: マイク権限がない
@@ -865,7 +865,7 @@ try {
 }
 ```
 
-### OpenAIClient
+### 🤖 OpenAIClient
 
 エラーは`error.message`で内容を確認します：
 - APIキー無効: "APIキーが無効です。設定を確認してください。"
@@ -880,7 +880,7 @@ try {
 }
 ```
 
-### Storage
+### 💾 Storage
 
 エラーは標準の`Error`として投げられます：
 
@@ -894,20 +894,20 @@ try {
 
 ---
 
-## バージョニング
+## 🔖 バージョニング
 
-### API Version
+### 📌 API Version
 
 現在のバージョン: `v1.0.0`
 
-### 互換性
+### ✅ 互換性
 
 - Chrome 88以降
 - OpenAI API: 2024-01-01以降
 
 ---
 
-## サポート
+## 💬 サポート
 
 API に関する質問は以下まで:
 

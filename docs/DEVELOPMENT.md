@@ -1,10 +1,10 @@
-# 開発ガイド
+# 💻 開発ガイド
 
 KoeMoji-Go Web Chrome拡張機能の開発方法を説明します。
 
-## 開発環境
+## 🛠️ 開発環境
 
-### 必要なもの
+### 📦 必要なもの
 
 - **Google Chrome** 最新版
 - **テキストエディタ** - VS Code推奨
@@ -13,7 +13,7 @@ KoeMoji-Go Web Chrome拡張機能の開発方法を説明します。
   - macOS: BlackHole
   - Windows: VoiceMeeter
 
-### 推奨VS Code拡張機能
+### ⚙️ 推奨VS Code拡張機能
 
 ```json
 {
@@ -25,16 +25,16 @@ KoeMoji-Go Web Chrome拡張機能の開発方法を説明します。
 }
 ```
 
-## プロジェクトのセットアップ
+## 🚀 プロジェクトのセットアップ
 
-### 1. リポジトリのクローン
+### 1. 📥 リポジトリのクローン
 
 ```bash
 git clone https://github.com/infoHiroki/koemoji-web.git
 cd koemoji-web
 ```
 
-### 2. Chrome拡張として読み込み
+### 2. 🔌 Chrome拡張として読み込み
 
 1. Chromeを開く
 2. アドレスバーに `chrome://extensions/` と入力
@@ -42,7 +42,7 @@ cd koemoji-web
 4. 「パッケージ化されていない拡張機能を読み込む」をクリック
 5. `koemoji-web` フォルダを選択
 
-### 3. 開発の開始
+### 3. ✨ 開発の開始
 
 ```bash
 # エディタを開く
@@ -51,7 +51,7 @@ code .
 # または任意のエディタで開発開始
 ```
 
-## プロジェクト構造
+## 📁 プロジェクト構造
 
 ```
 koemoji-web/
@@ -82,9 +82,9 @@ koemoji-web/
 └── docs/                 # ドキュメント
 ```
 
-## 開発フロー
+## 🔄 開発フロー
 
-### 1. 機能追加の手順
+### 1. ✨ 機能追加の手順
 
 ```bash
 # 1. ブランチを作成
@@ -107,9 +107,9 @@ git commit -m "Add your feature description"
 git push origin feature/your-feature-name
 ```
 
-### 2. デバッグ方法
+### 2. 🐛 デバッグ方法
 
-#### Background Script
+#### ⚙️ Background Script
 
 1. `chrome://extensions/` を開く
 2. KoeMoji-Go Webの「サービスワーカー」リンクをクリック
@@ -124,7 +124,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 ```
 
-#### Popup Script
+#### 🎨 Popup Script
 
 1. 拡張機能アイコンを右クリック
 2. 「検証」を選択
@@ -139,7 +139,7 @@ document.getElementById('startBtn').addEventListener('click', () => {
 });
 ```
 
-#### Content Script
+#### 📄 Content Script
 
 1. Google Meetなどの対象ページを開く
 2. 右クリック → 「検証」
@@ -150,7 +150,7 @@ document.getElementById('startBtn').addEventListener('click', () => {
 console.log('Content script loaded on:', window.location.href);
 ```
 
-### 3. ホットリロード
+### 3. 🔄 ホットリロード
 
 拡張機能の変更後は手動でリロードが必要です:
 
@@ -158,11 +158,11 @@ console.log('Content script loaded on:', window.location.href);
 2. 拡張機能の「更新」ボタンをクリック
 3. またはキーボードショートカット: `Ctrl+R` (Windows) / `Cmd+R` (Mac)
 
-## コーディング規約
+## 📝 コーディング規約
 
 ### JavaScript
 
-#### スタイルガイド
+#### ✅ スタイルガイド
 
 ```javascript
 // ✅ Good: const/let使用、セミコロンあり
@@ -214,7 +214,7 @@ async function transcribeAudio(audioBlob) {
 }
 ```
 
-#### 非同期処理
+#### ⏱️ 非同期処理
 
 ```javascript
 // ✅ Good: async/await使用
@@ -289,11 +289,11 @@ const processRecording = () => {
 }
 ```
 
-## テスト
+## 🧪 テスト
 
-### 手動テスト
+### 🖱️ 手動テスト
 
-#### 録音機能
+#### 🎙️ 録音機能
 
 1. Google Meetで新しい会議を作成
 2. 拡張機能で録音開始
@@ -301,7 +301,7 @@ const processRecording = () => {
 4. 録音停止
 5. 文字起こし結果を確認
 
-#### 文字起こし・要約
+#### 📝 文字起こし・要約
 
 1. テスト音声ファイルを準備
 2. 録音機能で音声を録音
@@ -325,7 +325,7 @@ const processRecording = () => {
    - 録音を開始
    - 権限要求ダイアログが表示されるか確認
 
-### 自動テスト（将来実装）
+### 🤖 自動テスト（将来実装）
 
 ```javascript
 // 例: Jestでのユニットテスト
@@ -345,9 +345,9 @@ describe('AudioRecorder', () => {
 });
 ```
 
-## パフォーマンス最適化
+## ⚡ パフォーマンス最適化
 
-### 1. 音声データの扱い
+### 1. 🎵 音声データの扱い
 
 ```javascript
 // ✅ Good: 使用後すぐに破棄
@@ -371,7 +371,7 @@ async function processAudio(audioBlob) {
 }
 ```
 
-### 2. API呼び出しの最適化
+### 2. 📡 API呼び出しの最適化
 
 ```javascript
 // ✅ Good: チャンク分割で大きなファイルを処理
@@ -389,7 +389,7 @@ async function transcribeLargeAudio(audioBlob) {
 }
 ```
 
-### 3. ストレージの最適化
+### 3. 💾 ストレージの最適化
 
 ```javascript
 // ✅ Good: 古いデータを自動削除
@@ -415,9 +415,9 @@ async function saveTranscript(transcript) {
 }
 ```
 
-## セキュリティ
+## 🔒 セキュリティ
 
-### APIキーの保護
+### 🔑 APIキーの保護
 
 ```javascript
 // ✅ Good: chrome.storage.syncで暗号化保存
@@ -436,7 +436,7 @@ function saveApiKey(apiKey) {
 }
 ```
 
-### XSS対策
+### 🛡️ XSS対策
 
 ```javascript
 // ✅ Good: textContentを使用
@@ -452,9 +452,9 @@ function displayTranscript(text) {
 }
 ```
 
-## デプロイ
+## 🚀 デプロイ
 
-### Chrome Web Storeへの公開
+### 📦 Chrome Web Storeへの公開
 
 1. **パッケージ化**
    ```bash
@@ -470,7 +470,7 @@ function displayTranscript(text) {
    - 説明・スクリーンショットを追加
    - 審査リクエスト
 
-### バージョニング
+### 🔖 バージョニング
 
 セマンティックバージョニングを採用:
 
@@ -485,9 +485,9 @@ function displayTranscript(text) {
 }
 ```
 
-## トラブルシューティング
+## 🔧 トラブルシューティング
 
-### 拡張機能が読み込めない
+### ❌ 拡張機能が読み込めない
 
 **症状**: エラー "Manifest file is missing or unreadable"
 
@@ -495,7 +495,7 @@ function displayTranscript(text) {
 - `manifest.json` が正しいJSON形式か確認
 - 構文エラーがないか確認
 
-### Background Scriptが動作しない
+### ⚙️ Background Scriptが動作しない
 
 **症状**: console.logが出力されない
 
@@ -504,7 +504,7 @@ function displayTranscript(text) {
 2. エラーがあれば修正
 3. 拡張機能をリロード
 
-### 録音が開始されない
+### 🎙️ 録音が開始されない
 
 **症状**: エラー "Permission denied"
 
@@ -513,26 +513,26 @@ function displayTranscript(text) {
 2. `chrome://settings/content/microphone` で許可
 3. ページをリロード
 
-## 参考資料
+## 📚 参考資料
 
-### 公式ドキュメント
+### 📖 公式ドキュメント
 
 - [Chrome Extension API](https://developer.chrome.com/docs/extensions/)
 - [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
 - [MediaRecorder API](https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder)
 - [OpenAI API Documentation](https://platform.openai.com/docs/api-reference)
 
-### サンプルコード
+### 💡 サンプルコード
 
 - [Chrome Extension Samples](https://github.com/GoogleChrome/chrome-extensions-samples)
 - [Web Audio Examples](https://github.com/mdn/webaudio-examples)
 
-### コミュニティ
+### 👥 コミュニティ
 
 - [Chrome Extensions Google Group](https://groups.google.com/a/chromium.org/g/chromium-extensions)
 - [Stack Overflow - Chrome Extension](https://stackoverflow.com/questions/tagged/google-chrome-extension)
 
-## 貢献
+## 🤝 貢献
 
 プルリクエストを歓迎します！
 
@@ -544,7 +544,7 @@ function displayTranscript(text) {
 
 詳細は [CONTRIBUTING.md](../CONTRIBUTING.md) を参照してください。
 
-## ライセンス
+## 📄 ライセンス
 
 このプロジェクトは個人利用は自由ですが、商用利用は事前連絡が必要です。
 詳細は [LICENSE](../LICENSE) を参照してください。
