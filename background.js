@@ -12,7 +12,14 @@ let offscreenDocumentCreated = false;
 
 // オフスクリーンドキュメントを作成
 async function createOffscreenDocument() {
-  if (offscreenDocumentCreated) {
+  // 既に存在するか確認
+  const existingContexts = await chrome.runtime.getContexts({
+    contextTypes: ['OFFSCREEN_DOCUMENT']
+  });
+
+  if (existingContexts.length > 0) {
+    console.log('Offscreen document already exists');
+    offscreenDocumentCreated = true;
     return;
   }
 
