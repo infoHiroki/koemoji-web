@@ -679,9 +679,8 @@ function handleTranscriptionComplete(data) {
 function handleSummaryComplete(data) {
   if (currentTranscript && currentTranscript.id === data.id) {
     currentTranscript.summary = data.summary;
-    summaryContent.style.display = 'block';
 
-    // マークダウンをHTMLに変換して表示
+    // マークダウンをHTMLに変換（表示前に内容を設定）
     if (typeof marked !== 'undefined') {
       marked.setOptions({
         breaks: false,  // 単一改行を<br>に変換しない
@@ -691,6 +690,9 @@ function handleSummaryComplete(data) {
     } else {
       summaryText.textContent = data.summary;
     }
+
+    // 内容を設定してから表示
+    summaryContent.style.display = 'block';
   }
   statusText.textContent = '要約完了';
   loadHistory();
