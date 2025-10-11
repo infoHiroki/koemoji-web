@@ -174,6 +174,9 @@ async function handleMessage(message, sender) {
       case 'deleteTranscript':
         return await handleDeleteTranscript(message);
 
+      case 'deleteAllTranscripts':
+        return await handleDeleteAllTranscripts(message);
+
       case 'updateTranscriptTitle':
         return await handleUpdateTranscriptTitle(message);
 
@@ -571,6 +574,19 @@ async function handleDeleteTranscript(message) {
     };
   } catch (error) {
     console.error('Failed to delete transcript:', error);
+    throw error;
+  }
+}
+
+// すべての文字起こしを削除
+async function handleDeleteAllTranscripts(message) {
+  try {
+    await Storage.deleteAllTranscripts();
+    return {
+      success: true
+    };
+  } catch (error) {
+    console.error('Failed to delete all transcripts:', error);
     throw error;
   }
 }

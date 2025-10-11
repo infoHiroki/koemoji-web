@@ -17,6 +17,7 @@ const copySummaryBtn = document.getElementById('copySummaryBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const deleteBtn = document.getElementById('deleteBtn');
 const historyList = document.getElementById('historyList');
+const deleteAllBtn = document.getElementById('deleteAllBtn');
 const refreshHistoryBtn = document.getElementById('refreshHistoryBtn');
 const settingsBtn = document.getElementById('settingsBtn');
 
@@ -84,6 +85,7 @@ function setupEventListeners() {
   deleteBtn.addEventListener('click', handleDeleteTop);
 
   // 履歴
+  deleteAllBtn.addEventListener('click', handleDeleteAll);
   refreshHistoryBtn.addEventListener('click', loadHistory);
 
   // 設定
@@ -610,6 +612,32 @@ async function deleteTranscript(id) {
   } catch (error) {
     console.error('Failed to delete:', error);
     showError('削除に失敗しました');
+  }
+}
+
+// すべて削除処理
+async function handleDeleteAll() {
+  try {
+    // 確認ダイアログを表示
+    if (!confirm('すべての履歴を削除しますか？この操作は取り消せません。')) {
+      return;
+    }
+
+    const response = await chrome.runtime.sendMessage({
+      action: 'deleteAllTranscripts'
+    });
+
+    if (response.success) {
+      currentTranscript = null;
+      showTranscriptSection(false);
+      await loadHistory();
+      showNotification('すべての履歴を削除しました');
+    } else {
+      throw new Error(response.error || 'すべての履歴の削除に失敗しました');
+    }
+  } catch (error) {
+    console.error('Failed to delete all:', error);
+    showError('すべての履歴の削除に失敗しました');
   }
 }
 
