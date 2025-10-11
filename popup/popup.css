@@ -336,20 +336,22 @@ body {
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 3px;
+  margin-bottom: 6px;
+}
+
+.history-item-header {
   padding: 10px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.history-item:hover {
+.history-item-header:hover {
   background: #f9f9f9;
-  border-color: #2196f3;
 }
 
-.history-item.active {
+.history-item.active .history-item-header {
   background: #e3f2fd;
-  border-color: #2196f3;
-  border-width: 2px;
+  border-bottom: 1px solid #ddd;
 }
 
 .history-item__title {
@@ -364,6 +366,146 @@ body {
   color: #999;
   display: flex;
   gap: 8px;
+}
+
+/* 履歴アイテム内の文字起こし詳細 */
+.history-item-detail {
+  display: none;
+  padding: 12px;
+  border-top: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+.history-item.active .history-item-detail {
+  display: block;
+}
+
+.history-detail-meta {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding: 6px 8px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.history-detail-meta .meta-item {
+  color: #666;
+}
+
+.history-detail-meta .meta-item strong {
+  color: #333;
+  font-weight: 500;
+}
+
+.history-transcript {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.history-transcript-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.history-transcript-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.history-transcript-text {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #333;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.history-summary {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 3px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.history-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.history-summary-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.history-summary-text {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #333;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* マークダウン表示（履歴内） */
+.history-summary-text h1,
+.history-summary-text h2,
+.history-summary-text h3,
+.history-summary-text h4 {
+  margin-top: 8px;
+  margin-bottom: 4px;
+  font-weight: 600;
+  color: #333;
+}
+
+.history-summary-text h1 { font-size: 13px; }
+.history-summary-text h2 { font-size: 12px; }
+.history-summary-text h3 { font-size: 11px; }
+.history-summary-text h4 { font-size: 11px; }
+
+.history-summary-text p {
+  margin-bottom: 6px;
+}
+
+.history-summary-text ul,
+.history-summary-text ol {
+  margin-left: 16px;
+  margin-bottom: 6px;
+}
+
+.history-summary-text li {
+  margin-bottom: 3px;
+}
+
+.history-summary-text code {
+  background: #f0f0f0;
+  padding: 2px 4px;
+  border-radius: 2px;
+  font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+  font-size: 11px;
+}
+
+.history-item-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .empty-message {

@@ -77,11 +77,11 @@ function setupEventListeners() {
   startBtn.addEventListener('click', handleStartRecording);
   stopBtn.addEventListener('click', handleStopRecording);
 
-  // 文字起こし結果のアクション
+  // 文字起こし結果のアクション（トップセクション）
   copyTranscriptBtn.addEventListener('click', handleCopyTranscript);
   copySummaryBtn.addEventListener('click', handleCopySummary);
-  downloadBtn.addEventListener('click', handleDownload);
-  deleteBtn.addEventListener('click', handleDelete);
+  downloadBtn.addEventListener('click', handleDownloadTop);
+  deleteBtn.addEventListener('click', handleDeleteTop);
 
   // 履歴
   refreshHistoryBtn.addEventListener('click', loadHistory);
@@ -224,21 +224,10 @@ async function handleCopySummary() {
   }
 }
 
-// ダウンロード
-function handleDownload() {
-  try {
-    const text = buildCopyText();
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `transcript_${new Date().toISOString().slice(0, 10)}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showNotification('ダウンロードしました');
-  } catch (error) {
-    console.error('Failed to download:', error);
-    showError('ダウンロードに失敗しました');
+// ダウンロード（トップセクション用）
+function handleDownloadTop() {
+  if (currentTranscript) {
+    downloadTranscript(currentTranscript);
   }
 }
 
@@ -256,35 +245,11 @@ function buildCopyText() {
   return text;
 }
 
-// 削除
-async function handleDelete() {
-  if (!currentTranscript) return;
-
-  if (!confirm('この文字起こし結果を削除しますか？')) {
-    return;
-  }
-
-  try {
-    const response = await chrome.runtime.sendMessage({
-      action: 'deleteTranscript',
-      id: currentTranscript.id
-    });
-
-    if (response.success) {
-      currentTranscript = null;
-      showTranscriptSection(false);
-      // すべての履歴アイテムのactiveクラスを削除
-      document.querySelectorAll('.history-item').forEach(item => {
-        item.classList.remove('active');
-      });
-      await loadHistory();
-      showNotification('削除しました');
-    } else {
-      throw new Error(response.error || '削除に失敗しました');
-    }
-  } catch (error) {
-    console.error('Failed to delete:', error);
-    showError('削除に失敗しました');
+// 削除（トップセクション用）
+async function handleDeleteTop() {
+  if (currentTranscript) {
+    await deleteTranscript(currentTranscript.id);
+    showTranscriptSection(false);
   }
 }
 
@@ -313,41 +278,224 @@ function displayHistory(transcripts) {
     return;
   }
 
-  historyList.innerHTML = transcripts.map(transcript => `
-    <div class="history-item" data-id="${transcript.id}">
-      <div class="history-item__title">${escapeHtml(transcript.title || '無題')}</div>
-      <div class="history-item__meta">
-        <span>${formatDate(transcript.timestamp)}</span>
-        <span>${formatDuration(transcript.duration)}</span>
-      </div>
-    </div>
-  `).join('');
+  historyList.innerHTML = transcripts.map(transcript => {
+    const summaryHtml = transcript.summary ?
+      `<div class="history-summary">
+        <div class="history-summary-header">
+          <div class="history-summary-title">📋 AI要約</div>
+          <button class="btn btn-small btn-text history-copy-summary" data-id="${transcript.id}">
+            <span class="btn-icon">📋</span>
+            コピー
+          </button>
+        </div>
+        <div class="history-summary-text" data-summary="${escapeHtml(transcript.summary)}"></div>
+      </div>` : '';
 
-  // 履歴アイテムのクリックイベント
-  document.querySelectorAll('.history-item').forEach(item => {
-    item.addEventListener('click', () => {
+    return `
+      <div class="history-item" data-id="${transcript.id}">
+        <div class="history-item-header">
+          <div class="history-item__title">${escapeHtml(transcript.title || '無題')}</div>
+          <div class="history-item__meta">
+            <span>${formatDate(transcript.timestamp)}</span>
+            <span>${formatDuration(transcript.duration)}</span>
+          </div>
+        </div>
+        <div class="history-item-detail">
+          <div class="history-detail-meta">
+            <span class="meta-item">
+              <strong>日時:</strong> ${formatDate(transcript.timestamp)}
+            </span>
+            <span class="meta-item">
+              <strong>時間:</strong> ${formatDuration(transcript.duration)}
+            </span>
+          </div>
+          <div class="history-transcript">
+            <div class="history-transcript-header">
+              <div class="history-transcript-title">文字起こし</div>
+              <button class="btn btn-small btn-text history-copy-transcript" data-id="${transcript.id}">
+                <span class="btn-icon">📋</span>
+                コピー
+              </button>
+            </div>
+            <div class="history-transcript-text">${escapeHtml(transcript.transcript || '文字起こし結果がありません')}</div>
+          </div>
+          ${summaryHtml}
+          <div class="history-item-actions">
+            <button class="btn btn-small history-download" data-id="${transcript.id}">
+              <span class="btn-icon">💾</span>
+              ダウンロード
+            </button>
+            <button class="btn btn-small btn-danger history-delete" data-id="${transcript.id}">
+              <span class="btn-icon">🗑️</span>
+              削除
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // マークダウンをレンダリング
+  if (typeof marked !== 'undefined') {
+    document.querySelectorAll('.history-summary-text').forEach(elem => {
+      const summaryMarkdown = elem.dataset.summary;
+      if (summaryMarkdown) {
+        elem.innerHTML = marked.parse(summaryMarkdown);
+      }
+    });
+  }
+
+  // 履歴アイテムのヘッダークリックイベント（トグル）
+  document.querySelectorAll('.history-item-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const item = header.closest('.history-item');
       const id = item.dataset.id;
       const transcript = transcripts.find(t => t.id === id);
+
       if (transcript) {
-        displayTranscript(transcript);
+        toggleHistoryItem(item, transcript);
+      }
+    });
+  });
+
+  // 履歴内のアクションボタン
+  setupHistoryActions(transcripts);
+}
+
+// 履歴アイテムのトグル
+function toggleHistoryItem(item, transcript) {
+  const isActive = item.classList.contains('active');
+
+  // すべての履歴アイテムを閉じる
+  document.querySelectorAll('.history-item').forEach(i => {
+    i.classList.remove('active');
+  });
+
+  // クリックされたアイテムをトグル
+  if (!isActive) {
+    item.classList.add('active');
+    currentTranscript = transcript;
+    // スクロールして表示
+    setTimeout(() => {
+      item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 100);
+  } else {
+    currentTranscript = null;
+  }
+}
+
+// 履歴内のアクションボタンをセットアップ
+function setupHistoryActions(transcripts) {
+  // 文字起こしコピー
+  document.querySelectorAll('.history-copy-transcript').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation(); // 親のクリックイベントを防ぐ
+      const id = btn.dataset.id;
+      const transcript = transcripts.find(t => t.id === id);
+      if (transcript) {
+        navigator.clipboard.writeText(transcript.transcript).then(() => {
+          showNotification('文字起こしをコピーしました');
+        }).catch(error => {
+          console.error('Failed to copy:', error);
+          showError('コピーに失敗しました');
+        });
+      }
+    });
+  });
+
+  // 要約コピー
+  document.querySelectorAll('.history-copy-summary').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const transcript = transcripts.find(t => t.id === id);
+      if (transcript && transcript.summary) {
+        navigator.clipboard.writeText(transcript.summary).then(() => {
+          showNotification('AI要約をコピーしました');
+        }).catch(error => {
+          console.error('Failed to copy:', error);
+          showError('コピーに失敗しました');
+        });
+      }
+    });
+  });
+
+  // ダウンロード
+  document.querySelectorAll('.history-download').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const transcript = transcripts.find(t => t.id === id);
+      if (transcript) {
+        downloadTranscript(transcript);
+      }
+    });
+  });
+
+  // 削除
+  document.querySelectorAll('.history-delete').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const transcript = transcripts.find(t => t.id === id);
+      if (transcript && confirm(`「${transcript.title}」を削除しますか？`)) {
+        await deleteTranscript(id);
       }
     });
   });
 }
 
-// 文字起こし結果表示
-function displayTranscript(transcript) {
-  // 既に同じ文字起こしを表示している場合はトグル（閉じる）
-  if (currentTranscript && currentTranscript.id === transcript.id) {
-    currentTranscript = null;
-    showTranscriptSection(false);
-    // すべての履歴アイテムのactiveクラスを削除
-    document.querySelectorAll('.history-item').forEach(item => {
-      item.classList.remove('active');
-    });
-    return;
-  }
+// ダウンロード処理
+function downloadTranscript(transcript) {
+  try {
+    let text = `# ${transcript.title}\n\n`;
+    text += `日時: ${formatDate(transcript.timestamp)}\n`;
+    text += `時間: ${formatDuration(transcript.duration)}\n\n`;
+    text += `## 文字起こし\n\n${transcript.transcript}\n\n`;
 
+    if (transcript.summary) {
+      text += `## AI要約\n\n${transcript.summary}\n`;
+    }
+
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transcript_${new Date(transcript.timestamp).toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotification('ダウンロードしました');
+  } catch (error) {
+    console.error('Failed to download:', error);
+    showError('ダウンロードに失敗しました');
+  }
+}
+
+// 削除処理
+async function deleteTranscript(id) {
+  try {
+    const response = await chrome.runtime.sendMessage({
+      action: 'deleteTranscript',
+      id: id
+    });
+
+    if (response.success) {
+      if (currentTranscript && currentTranscript.id === id) {
+        currentTranscript = null;
+      }
+      await loadHistory();
+      showNotification('削除しました');
+    } else {
+      throw new Error(response.error || '削除に失敗しました');
+    }
+  } catch (error) {
+    console.error('Failed to delete:', error);
+    showError('削除に失敗しました');
+  }
+}
+
+// 文字起こし結果表示（上部セクション用 - 現在は使用しない）
+function displayTranscript(transcript) {
   currentTranscript = transcript;
 
   transcriptDate.textContent = formatDate(transcript.timestamp);
@@ -369,15 +517,6 @@ function displayTranscript(transcript) {
   }
 
   showTranscriptSection(true);
-
-  // すべての履歴アイテムのactiveクラスを削除してから、選択されたアイテムに追加
-  document.querySelectorAll('.history-item').forEach(item => {
-    item.classList.remove('active');
-  });
-  const selectedItem = document.querySelector(`.history-item[data-id="${transcript.id}"]`);
-  if (selectedItem) {
-    selectedItem.classList.add('active');
-  }
 
   // スクロール
   transcriptSection.scrollIntoView({ behavior: 'smooth' });
