@@ -330,36 +330,14 @@
     </header>
 
     <div class="settings-content">
-      <!-- APIプロバイダー設定 -->
-      <section class="form-section">
-        <h2 class="section-title">🌐 AIプロバイダー設定</h2>
-
-        <div class="form-group">
-          <label for="apiProvider">
-            AIプロバイダー
-            <span class="label-description">使用するAIサービスを選択</span>
-          </label>
-          <select id="apiProvider">
-            <option value="openai">OpenAI（有料）</option>
-            <option value="groq">Groq（無料・高速）</option>
-          </select>
-        </div>
-
-        <div class="info-box">
-          <strong>プロバイダーの違い:</strong><br>
-          • <strong>OpenAI</strong>: Whisper（文字起こし）+ GPT-4（要約）<br>
-          • <strong>Groq</strong>: 文字起こしはOpenAI、要約は無料の高速LLM（LLaMA, Mixtral等）
-        </div>
-      </section>
-
       <!-- OpenAI API設定 -->
-      <section class="form-section" id="openaiSection">
+      <section class="form-section">
         <h2 class="section-title">🤖 OpenAI API設定</h2>
 
         <div class="form-group">
           <label for="apiKey">
-            OpenAI APIキー
-            <span class="label-description">文字起こしに必須（Whisper API）</span>
+            APIキー
+            <span class="label-description">OpenAI APIキーを入力してください</span>
           </label>
           <input
             type="password"
@@ -374,31 +352,6 @@
             OpenAI Platform
           </a>
           でAPIキーを作成してください。
-        </div>
-      </section>
-
-      <!-- Groq API設定 -->
-      <section class="form-section" id="groqSection" style="display: none;">
-        <h2 class="section-title">⚡ Groq API設定</h2>
-
-        <div class="form-group">
-          <label for="groqApiKey">
-            Groq APIキー
-            <span class="label-description">AI要約に使用（完全無料）</span>
-          </label>
-          <input
-            type="password"
-            id="groqApiKey"
-            placeholder="gsk_..."
-          />
-        </div>
-
-        <div class="info-box">
-          <strong>APIキーの取得方法:</strong>
-          <a href="https://console.groq.com/keys" target="_blank" class="setup-link">
-            Groq Console
-          </a>
-          でAPIキーを作成してください（無料）。
         </div>
       </section>
 
@@ -451,28 +404,15 @@
           </div>
         </div>
 
-        <div class="form-group" id="openaiModelGroup">
+        <div class="form-group">
           <label for="summaryModel">
-            要約AIモデル（OpenAI）
+            要約AIモデル
             <span class="label-description">要約に使用するOpenAI LLMモデルを選択</span>
           </label>
           <select id="summaryModel">
             <option value="gpt-4o-mini">GPT-4o Mini（高速・低コスト）</option>
             <option value="gpt-4o">GPT-4o（バランス型）</option>
             <option value="gpt-4-turbo">GPT-4 Turbo（高性能）</option>
-          </select>
-        </div>
-
-        <div class="form-group" id="groqModelGroup" style="display: none;">
-          <label for="groqSummaryModel">
-            要約AIモデル（Groq）
-            <span class="label-description">要約に使用するGroq LLMモデルを選択（すべて無料）</span>
-          </label>
-          <select id="groqSummaryModel">
-            <option value="llama-3.1-70b-versatile">LLaMA 3.1 70B（推奨・高性能）</option>
-            <option value="llama-3.1-8b-instant">LLaMA 3.1 8B（超高速）</option>
-            <option value="mixtral-8x7b-32768">Mixtral 8x7B（長文対応）</option>
-            <option value="gemma2-9b-it">Gemma 2 9B（バランス型）</option>
           </select>
         </div>
 

@@ -398,8 +398,8 @@ async function transcribeAudio(audioBlob, transcriptId, settings) {
   try {
     console.log('Starting transcription...');
 
-    // OpenAI Clientを初期化（文字起こしは常にOpenAI Whisperを使用）
-    const client = new OpenAIClient(settings.apiKey, 'openai');
+    // OpenAI Clientを初期化
+    const client = new OpenAIClient(settings.apiKey);
 
     // Whisper APIはWebMも対応しているので、そのまま送信
     // （Service WorkerではAudioContextが使えないためWAV変換をスキップ）
@@ -462,13 +462,8 @@ async function generateSummary(transcriptId, transcriptText, settings) {
   try {
     console.log('Generating summary...');
 
-    // プロバイダーに応じてOpenAI Clientを初期化
-    const apiProvider = settings.apiProvider || 'openai';
-    const client = new OpenAIClient(
-      settings.apiKey,
-      apiProvider,
-      settings.groqApiKey
-    );
+    // OpenAI Clientを初期化
+    const client = new OpenAIClient(settings.apiKey);
 
     // 要約生成（カスタムプロンプトとモデルがあれば使用）
     const options = {};
