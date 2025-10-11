@@ -1,5 +1,15 @@
 # Chromeウェブストア リリースチェックリスト
 
+**最終更新: 2025-10-11**
+
+## 進捗状況
+- ✅ Phase 1: 事前準備 - **完了**
+- 🔄 Phase 2: テスト - **進行中**
+- ⏳ Phase 3: スクリーンショット - **未着手**
+- ⏳ Phase 4: パッケージ化・提出 - **未着手**
+
+---
+
 ## 1. 事前準備 ✅
 
 - [x] アイコンの準備（16px, 48px, 128px）
@@ -7,6 +17,10 @@
 - [x] プライバシーポリシーの作成
 - [x] README.mdの充実
 - [x] .gitignoreの設定
+- [x] ドキュメントの絵文字による改善
+- [x] Chrome Web Store向けREADME更新
+- [x] GitHubリポジトリ公開
+- [x] リモートリポジトリへのpush
 
 ## 2. テスト 📝
 
@@ -23,12 +37,17 @@
 
 `screenshots/` ディレクトリに以下を保存：
 
-- [ ] `01-main-ready.png` - メイン画面（録音開始前）
-- [ ] `02-recording.png` - 録音中の画面
-- [ ] `03-transcript-result.png` - 文字起こし結果表示
-- [ ] `04-settings.png` - 設定画面
+- [x] `screenshot-01-main.png` - メイン画面（録音開始前） ✅ 1280x800
+- [x] `screenshot-02-recording.png` - 録音中の画面 ✅ 1280x800
+- [x] `screenshot-03-transcript.png` - 文字起こし＋AI要約結果表示 ✅ 1280x800
+- [x] `screenshot-04-settings.png` - 設定画面（上部） ✅ 1280x800
+- [x] `screenshot-05-settings-bottom.png` - 設定画面（下部・カスタムプロンプト） ✅ 1280x800
 
-推奨サイズ: 1280x800px
+**サイズ要件:**
+- 必須: 1280x800px または 640x400px ✅
+- 最大5枚まで ✅
+- PNG形式推奨 ✅
+- ファイルサイズ: 各5MB以下 ✅
 
 ## 4. パッケージ化 📦
 
