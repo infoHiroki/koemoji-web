@@ -89,6 +89,13 @@ async function handleSave() {
     const language = languageSelect.value;
     const autoSummarize = autoSummarizeCheckbox.checked;
 
+    console.log('Saving settings:', {
+      hasApiKey: !!apiKey,
+      recordingDevice,
+      language,
+      autoSummarize
+    });
+
     // バリデーション
     if (!apiKey) {
       showStatus('APIキーを入力してください', 'error');
@@ -109,18 +116,25 @@ async function handleSave() {
     }
 
     // 保存
+    const settingsToSave = {
+      apiKey,
+      recordingDevice,
+      language,
+      autoSummarize
+    };
+
+    console.log('Sending saveSettings message:', settingsToSave);
+
     const response = await chrome.runtime.sendMessage({
       action: 'saveSettings',
-      settings: {
-        apiKey,
-        recordingDevice,
-        language,
-        autoSummarize
-      }
+      settings: settingsToSave
     });
+
+    console.log('Save response:', response);
 
     if (response.success) {
       showStatus('設定を保存しました', 'success');
+      console.log('Settings saved successfully');
     } else {
       throw new Error(response.error || '保存に失敗しました');
     }

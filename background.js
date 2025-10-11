@@ -139,9 +139,21 @@ async function handleStartRecording(message) {
   try {
     // 設定を読み込み
     const settings = await Storage.loadSettings();
+    console.log('Loaded settings:', {
+      hasApiKey: !!settings.apiKey,
+      recordingDevice: settings.recordingDevice,
+      language: settings.language
+    });
 
     if (!settings.recordingDevice) {
-      throw new Error('録音デバイスが設定されていません。設定画面で録音デバイスを選択してください。');
+      throw new Error(
+        '録音デバイスが設定されていません。\n\n' +
+        '設定手順:\n' +
+        '1. 拡張機能アイコンをクリック\n' +
+        '2. 「⚙️ 設定」をクリック\n' +
+        '3. 録音デバイスを選択\n' +
+        '4. 「設定を保存」をクリック'
+      );
     }
 
     // オフスクリーンドキュメントを作成
