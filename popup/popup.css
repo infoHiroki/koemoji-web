@@ -359,6 +359,40 @@ body {
   font-weight: 500;
   color: #333;
   margin-bottom: 4px;
+  cursor: text;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-item__title:hover .edit-title-btn {
+  opacity: 1;
+}
+
+.edit-title-btn {
+  opacity: 0;
+  transition: opacity 0.2s;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+  background: transparent;
+  border: none;
+  color: #666;
+}
+
+.edit-title-btn:hover {
+  color: #2196f3;
+}
+
+.title-input {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 4px;
+  border: 1px solid #2196f3;
+  border-radius: 2px;
+  outline: none;
+  background: #fff;
 }
 
 .history-item__meta {

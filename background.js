@@ -174,6 +174,9 @@ async function handleMessage(message, sender) {
       case 'deleteTranscript':
         return await handleDeleteTranscript(message);
 
+      case 'updateTranscriptTitle':
+        return await handleUpdateTranscriptTitle(message);
+
       case 'getSettings':
         return await handleGetSettings(message);
 
@@ -269,10 +272,11 @@ async function handleStopRecording(message) {
 
     // プラットフォーム検出
     const platform = await detectPlatform();
+    const platformName = getPlatformName(platform);
 
     // 文字起こし結果を作成（処理中状態）
     const transcript = Storage.createTranscript({
-      title: `${platform} 会議 - ${new Date().toLocaleString('ja-JP')}`,
+      title: `${platformName} - ${new Date().toLocaleString('ja-JP')}`,
       duration: duration,
       audioSize: audioBlob.size,
       platform: platform
@@ -341,10 +345,11 @@ async function handleTranscribeAudio(message) {
 
     // プラットフォーム検出
     const platform = await detectPlatform();
+    const platformName = getPlatformName(platform);
 
     // 文字起こし結果を作成（処理中状態）
     const transcript = Storage.createTranscript({
-      title: `${platform} 会議 - ${new Date().toLocaleString('ja-JP')}`,
+      title: `${platformName} - ${new Date().toLocaleString('ja-JP')}`,
       duration: duration,
       audioSize: audioBlob.size,
       platform: platform
@@ -508,6 +513,16 @@ async function detectPlatform() {
   }
 }
 
+// プラットフォーム名を日本語化
+function getPlatformName(platform) {
+  const platformNames = {
+    'google-meet': 'Google Meet',
+    'zoom': 'Zoom',
+    'unknown': 'Web会議'
+  };
+  return platformNames[platform] || 'Web会議';
+}
+
 // 文字起こし履歴を取得
 async function handleGetTranscripts(message) {
   try {
@@ -532,6 +547,20 @@ async function handleDeleteTranscript(message) {
     };
   } catch (error) {
     console.error('Failed to delete transcript:', error);
+    throw error;
+  }
+}
+
+// 文字起こしのタイトルを更新
+async function handleUpdateTranscriptTitle(message) {
+  try {
+    const { id, title } = message;
+    await Storage.updateTranscript(id, { title });
+    return {
+      success: true
+    };
+  } catch (error) {
+    console.error('Failed to update transcript title:', error);
     throw error;
   }
 }

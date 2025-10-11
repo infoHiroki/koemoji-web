@@ -294,7 +294,10 @@ function displayHistory(transcripts) {
     return `
       <div class="history-item" data-id="${transcript.id}">
         <div class="history-item-header">
-          <div class="history-item__title">${escapeHtml(transcript.title || '無題')}</div>
+          <div class="history-item__title" data-id="${transcript.id}">
+            <span class="title-text">${escapeHtml(transcript.title || '無題')}</span>
+            <button class="edit-title-btn" title="タイトルを編集">✏️</button>
+          </div>
           <div class="history-item__meta">
             <span>${formatDate(transcript.timestamp)}</span>
             <span>${formatDuration(transcript.duration)}</span>
@@ -442,6 +445,99 @@ function setupHistoryActions(transcripts) {
         await deleteTranscript(id);
       }
     });
+  });
+
+  // タイトル編集
+  document.querySelectorAll('.edit-title-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const titleElement = btn.closest('.history-item__title');
+      const id = titleElement.dataset.id;
+      const transcript = transcripts.find(t => t.id === id);
+      if (transcript) {
+        startEditingTitle(titleElement, transcript);
+      }
+    });
+  });
+}
+
+// タイトル編集開始
+function startEditingTitle(titleElement, transcript) {
+  const titleText = titleElement.querySelector('.title-text');
+  const editBtn = titleElement.querySelector('.edit-title-btn');
+  const currentTitle = titleText.textContent;
+
+  // 入力フィールドを作成
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'title-input';
+  input.value = currentTitle;
+
+  // テキストとボタンを非表示にして入力フィールドを表示
+  titleText.style.display = 'none';
+  editBtn.style.display = 'none';
+  titleElement.insertBefore(input, titleText);
+
+  // フォーカスして全選択
+  input.focus();
+  input.select();
+
+  // 保存処理
+  const saveTitle = async () => {
+    const newTitle = input.value.trim();
+    if (newTitle && newTitle !== currentTitle) {
+      try {
+        const response = await chrome.runtime.sendMessage({
+          action: 'updateTranscriptTitle',
+          id: transcript.id,
+          title: newTitle
+        });
+
+        if (response.success) {
+          titleText.textContent = newTitle;
+          transcript.title = newTitle;
+          showNotification('タイトルを更新しました');
+        } else {
+          throw new Error(response.error || 'タイトルの更新に失敗しました');
+        }
+      } catch (error) {
+        console.error('Failed to update title:', error);
+        showError('タイトルの更新に失敗しました');
+      }
+    }
+
+    // 入力フィールドを削除して元の表示に戻す
+    input.remove();
+    titleText.style.display = '';
+    editBtn.style.display = '';
+  };
+
+  // キャンセル処理
+  const cancelEdit = () => {
+    input.remove();
+    titleText.style.display = '';
+    editBtn.style.display = '';
+  };
+
+  // イベントリスナー
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveTitle();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEdit();
+    }
+  });
+
+  input.addEventListener('blur', () => {
+    // 少し遅延させてクリックイベントが処理されるようにする
+    setTimeout(saveTitle, 100);
+  });
+
+  // クリックイベントの伝播を止める
+  input.addEventListener('click', (e) => {
+    e.stopPropagation();
   });
 }
 
