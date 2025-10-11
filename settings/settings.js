@@ -1,11 +1,18 @@
 // settings.js - 設定画面制御
 
 // DOM要素の取得
+const apiProviderSelect = document.getElementById('apiProvider');
 const apiKeyInput = document.getElementById('apiKey');
+const groqApiKeyInput = document.getElementById('groqApiKey');
+const openaiSection = document.getElementById('openaiSection');
+const groqSection = document.getElementById('groqSection');
+const openaiModelGroup = document.getElementById('openaiModelGroup');
+const groqModelGroup = document.getElementById('groqModelGroup');
 const recordingDeviceSelect = document.getElementById('recordingDevice');
 const languageSelect = document.getElementById('language');
 const autoSummarizeCheckbox = document.getElementById('autoSummarize');
 const summaryModelSelect = document.getElementById('summaryModel');
+const groqSummaryModelSelect = document.getElementById('groqSummaryModel');
 const summaryPromptTextarea = document.getElementById('summaryPrompt');
 const testBtn = document.getElementById('testBtn');
 const saveBtn = document.getElementById('saveBtn');
@@ -22,6 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function setupEventListeners() {
   saveBtn.addEventListener('click', handleSave);
   testBtn.addEventListener('click', handleTest);
+  apiProviderSelect.addEventListener('change', handleProviderChange);
 }
 
 // 設定読み込み
@@ -34,11 +42,17 @@ async function loadSettings() {
     if (response.success) {
       const settings = response.settings || {};
 
+      apiProviderSelect.value = settings.apiProvider || 'openai';
       apiKeyInput.value = settings.apiKey || '';
+      groqApiKeyInput.value = settings.groqApiKey || '';
       languageSelect.value = settings.language || 'ja';
       autoSummarizeCheckbox.checked = settings.autoSummarize !== false;
       summaryModelSelect.value = settings.summaryModel || 'gpt-4o-mini';
+      groqSummaryModelSelect.value = settings.summaryModel || 'llama-3.1-70b-versatile';
       summaryPromptTextarea.value = settings.summaryPrompt || '';
+
+      // プロバイダーに応じてUIを切り替え
+      handleProviderChange();
 
       // 録音デバイスは後で設定
       if (settings.recordingDevice) {
@@ -48,6 +62,23 @@ async function loadSettings() {
   } catch (error) {
     console.error('Failed to load settings:', error);
     showStatus('設定の読み込みに失敗しました', 'error');
+  }
+}
+
+// プロバイダー変更時の処理
+function handleProviderChange() {
+  const provider = apiProviderSelect.value;
+
+  if (provider === 'openai') {
+    // OpenAI選択時
+    groqSection.style.display = 'none';
+    groqModelGroup.style.display = 'none';
+    openaiModelGroup.style.display = 'block';
+  } else if (provider === 'groq') {
+    // Groq選択時
+    groqSection.style.display = 'block';
+    groqModelGroup.style.display = 'block';
+    openaiModelGroup.style.display = 'none';
   }
 }
 
@@ -88,15 +119,21 @@ async function loadAudioDevices() {
 // 設定保存
 async function handleSave() {
   try {
+    const apiProvider = apiProviderSelect.value;
     const apiKey = apiKeyInput.value.trim();
+    const groqApiKey = groqApiKeyInput.value.trim();
     const recordingDevice = recordingDeviceSelect.value;
     const language = languageSelect.value;
     const autoSummarize = autoSummarizeCheckbox.checked;
-    const summaryModel = summaryModelSelect.value;
+    const summaryModel = apiProvider === 'groq'
+      ? groqSummaryModelSelect.value
+      : summaryModelSelect.value;
     const summaryPrompt = summaryPromptTextarea.value.trim();
 
     console.log('Saving settings:', {
+      apiProvider,
       hasApiKey: !!apiKey,
+      hasGroqApiKey: !!groqApiKey,
       recordingDevice,
       language,
       autoSummarize,
@@ -106,14 +143,26 @@ async function handleSave() {
 
     // バリデーション
     if (!apiKey) {
-      showStatus('APIキーを入力してください', 'error');
+      showStatus('OpenAI APIキーを入力してください（Whisper文字起こしに必須）', 'error');
       apiKeyInput.focus();
       return;
     }
 
     if (!apiKey.startsWith('sk-')) {
-      showStatus('APIキーの形式が正しくありません（sk-で始まる必要があります）', 'error');
+      showStatus('OpenAI APIキーの形式が正しくありません（sk-で始まる必要があります）', 'error');
       apiKeyInput.focus();
+      return;
+    }
+
+    if (apiProvider === 'groq' && !groqApiKey) {
+      showStatus('Groq APIキーを入力してください（AI要約に必須）', 'error');
+      groqApiKeyInput.focus();
+      return;
+    }
+
+    if (apiProvider === 'groq' && !groqApiKey.startsWith('gsk_')) {
+      showStatus('Groq APIキーの形式が正しくありません（gsk_で始まる必要があります）', 'error');
+      groqApiKeyInput.focus();
       return;
     }
 
@@ -125,7 +174,9 @@ async function handleSave() {
 
     // 保存
     const settingsToSave = {
+      apiProvider,
       apiKey,
+      groqApiKey,
       recordingDevice,
       language,
       autoSummarize,
