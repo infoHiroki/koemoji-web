@@ -8,7 +8,8 @@
   "permissions": [
     "storage",
     "activeTab",
-    "offscreen"
+    "offscreen",
+    "audioCapture"
   ],
 
   "host_permissions": [
