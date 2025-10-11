@@ -680,7 +680,17 @@ function handleSummaryComplete(data) {
   if (currentTranscript && currentTranscript.id === data.id) {
     currentTranscript.summary = data.summary;
     summaryContent.style.display = 'block';
-    summaryText.textContent = data.summary;
+
+    // マークダウンをHTMLに変換して表示
+    if (typeof marked !== 'undefined') {
+      marked.setOptions({
+        breaks: false,  // 単一改行を<br>に変換しない
+        gfm: true       // GitHub Flavored Markdownを使用
+      });
+      summaryText.innerHTML = marked.parse(data.summary);
+    } else {
+      summaryText.textContent = data.summary;
+    }
   }
   statusText.textContent = '要約完了';
   loadHistory();
