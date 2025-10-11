@@ -97,7 +97,7 @@ git checkout -b feature/your-feature-name
 # chrome://extensions/ で「更新」ボタンをクリック
 
 # 4. テスト
-# Google Meetなどで動作確認
+# Web会議や音声アプリで動作確認
 
 # 5. コミット
 git add .
@@ -141,14 +141,9 @@ document.getElementById('startBtn').addEventListener('click', () => {
 
 #### 📄 Content Script
 
-1. Google Meetなどの対象ページを開く
-2. 右クリック → 「検証」
-3. Consoleタブで出力確認
+※ 現在のバージョンではcontent scriptは使用されていません（将来の話者識別機能のために予約）
 
-```javascript
-// content.js
-console.log('Content script loaded on:', window.location.href);
-```
+仮想オーディオデバイス経由で録音するため、特定のWebページへのアクセスは不要です。
 
 ### 3. 🔄 ホットリロード
 
@@ -295,7 +290,7 @@ const processRecording = () => {
 
 #### 🎙️ 録音機能
 
-1. Google Meetで新しい会議を作成
+1. Web会議または音声アプリを開く（Google Meet、Zoom、YouTube等）
 2. 拡張機能で録音開始
 3. マイクテスト（何か話す）
 4. 録音停止

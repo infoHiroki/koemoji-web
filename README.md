@@ -13,7 +13,7 @@ KoeMoji-Go Webは、Google MeetやZoomなどのWeb会議を自動で文字起こ
 - 📝 **AI自動要約** - GPT-4による議事録自動生成
 - 🔒 **プライバシー重視** - ローカルストレージ保存、外部流出なし
 - ⚡ **ワンクリック録音** - 会議中に簡単操作
-- 🌐 **Web会議対応** - Google Meet、Zoom（ブラウザ版）対応
+- 🌐 **アプリ非依存** - すべての音声アプリに対応（Meet、Zoom、Teams、Discord等）
 
 ## 🚀 クイックスタート
 
@@ -83,10 +83,13 @@ KoeMoji-Go Webは、Google MeetやZoomなどのWeb会議を自動で文字起こ
 - Brave
 - その他Chromium系ブラウザ
 
-### Web会議プラットフォーム
-- ✅ Google Meet（ブラウザ版）
-- ✅ Zoom（ブラウザ版）
-- ❌ デスクトップアプリ版（非対応）
+### 対応アプリケーション
+システムオーディオをキャプチャするため、**あらゆる音声アプリケーション**に対応：
+- ✅ Web会議: Google Meet、Zoom、Microsoft Teams、Webex、Discord等
+- ✅ デスクトップアプリ: Zoom、Teams、Slackデスクトップアプリ等
+- ✅ ブラウザ音声: YouTube、ポッドキャスト等
+
+**仮想オーディオデバイス経由で録音するため、アプリケーションの種類を問いません。**
 
 ### OS
 - macOS 10.15以上

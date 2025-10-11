@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "KoeMoji-Go Web",
   "version": "1.0.0",
-  "description": "Web会議の音声を自動で文字起こし・AI要約。Google Meet・Zoom対応。OpenAI Whisper + GPT-4による高精度な文字起こしと要約を実現します。",
+  "description": "あらゆる音声を自動で文字起こし・AI要約。Web会議、デスクトップアプリ、ブラウザ音声すべてに対応。OpenAI Whisper + GPT-4による高精度な文字起こしと要約を実現します。",
   "author": "koemoji2024@gmail.com",
 
   "permissions": [
@@ -12,10 +12,7 @@
     "audioCapture"
   ],
 
-  "host_permissions": [
-    "*://meet.google.com/*",
-    "*://*.zoom.us/*"
-  ],
+  "host_permissions": [],
 
   "background": {
     "service_worker": "background.js"
@@ -35,16 +32,6 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-
-  "content_scripts": [
-    {
-      "matches": [
-        "*://meet.google.com/*",
-        "*://*.zoom.us/*"
-      ],
-      "js": ["content.js"]
-    }
-  ],
 
   "options_page": "settings/settings.html"
 }

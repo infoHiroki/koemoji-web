@@ -2,7 +2,7 @@
 
 ## 📋 概要
 
-KoeMoji-Go WebはChrome拡張機能として動作する、Web会議専用の文字起こし・要約ツールです。
+KoeMoji-Go WebはChrome拡張機能として動作する、あらゆる音声を文字起こし・要約するツールです。仮想オーディオデバイス経由でシステム音声をキャプチャするため、Web会議、デスクトップアプリ、ブラウザ音声など、アプリケーションの種類を問わず利用できます。
 
 ## 🎯 システム構成
 
@@ -35,10 +35,10 @@ KoeMoji-Go WebはChrome拡張機能として動作する、Web会議専用の文
          │                        │
          v                        v
    ┌─────────┐            ┌──────────────┐
-   │ Web     │            │  OpenAI API  │
-   │ Meeting │            │  - Whisper   │
-   │ (Meet/  │            │  - GPT-4     │
-   │  Zoom)  │            └──────────────┘
+   │ System  │            │  OpenAI API  │
+   │ Audio   │            │  - Whisper   │
+   │ (Any    │            │  - GPT-4     │
+   │  App)   │            └──────────────┘
    └─────────┘
 ```
 
@@ -290,7 +290,7 @@ async summarize(transcript, prompt) {
       "transcript": "文字起こしテキスト...",
       "summary": "AI要約...",
       "audioSize": 15728640, // バイト
-      "platform": "google-meet" // or "zoom"
+      "platform": "google-meet" // or "zoom" or "unknown" (プラットフォーム非依存)
     }
   ],
   "settings": {
@@ -347,12 +347,11 @@ async getApiKey()
 {
   "permissions": [
     "storage",           // データ保存
-    "activeTab"          // アクティブタブへのアクセス
+    "activeTab",         // アクティブタブ情報へのアクセス
+    "offscreen",         // オフスクリーン録音
+    "audioCapture"       // 音声キャプチャ
   ],
-  "host_permissions": [
-    "*://meet.google.com/*",
-    "*://*.zoom.us/*"
-  ]
+  "host_permissions": []  // プラットフォーム非依存のため不要
 }
 ```
 

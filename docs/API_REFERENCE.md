@@ -448,7 +448,7 @@ async saveTranscript(transcript: Transcript): Promise<void>
   duration: 1800,
   transcript: "文字起こし...",
   summary: "要約...",
-  platform: "google-meet"
+  platform: "google-meet"  // or "zoom" or "unknown" (プラットフォーム非依存)
 }
 ```
 
@@ -588,7 +588,7 @@ const transcript = Storage.createTranscript({
   title: 'Team Meeting',
   duration: 1800,
   audioSize: 15728640,
-  platform: 'google-meet'
+  platform: 'google-meet'  // or 'zoom' or 'unknown' (プラットフォーム非依存)
 });
 console.log(transcript.id); // "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
 ```
@@ -816,7 +816,7 @@ interface Transcript {
   transcript: string;          // 文字起こし結果
   summary?: string;            // AI要約（オプション）
   audioSize: number;           // 音声ファイルサイズ（バイト）
-  platform: 'google-meet' | 'zoom' | 'unknown';  // プラットフォーム
+  platform: 'google-meet' | 'zoom' | 'unknown';  // プラットフォーム（参考情報のみ、機能に影響なし）
 }
 ```
 

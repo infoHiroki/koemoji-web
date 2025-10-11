@@ -4,7 +4,7 @@
 
 ## プロジェクト概要
 
-**KoeMoji-Go Web**は、Web会議（Google Meet/Zoom）の音声を自動で文字起こし・AI要約するChrome拡張機能です。
+**KoeMoji-Go Web**は、あらゆる音声を自動で文字起こし・AI要約するChrome拡張機能です。仮想オーディオデバイス（BlackHole/VoiceMeeter）経由でシステム音声をキャプチャするため、Web会議、デスクトップアプリ、ブラウザ音声など、アプリケーションの種類を問わず利用できます。
 
 ### 関連プロジェクト
 - **デスクトップ版**: `/Users/hirokitakamura/Documents/Dev/KoeMoji-Go`
@@ -43,7 +43,7 @@ Chrome Extension
 ├── Settings (settings/)
 │   └── 設定画面、デバイス選択、APIキー管理
 ├── Content Script (content.js)
-│   └── Meet/Zoom検出
+│   └── プラットフォーム検出（将来の話者識別用、現在は未使用）
 └── Libraries (lib/)
     ├── audio-recorder.js - 音声録音
     ├── audio-encoder.js - WAV/MP3エンコード
@@ -214,7 +214,7 @@ function startRecording(deviceId) {
   transcript: "文字起こし...",
   summary: "要約...",
   audioSize: 15728640,           // バイト
-  platform: "google-meet"        // or "zoom"
+  platform: "google-meet"        // or "zoom" or "unknown" (プラットフォーム非依存)
 }
 ```
 
@@ -296,7 +296,7 @@ const response = await fetch('https://api.openai.com/v1/chat/completions', {
 ## テスト方針
 
 ### 手動テスト
-1. **録音機能**: Google Meetで実際に録音
+1. **録音機能**: Web会議や音声アプリで実際に録音（Google Meet、Zoom、YouTube等）
 2. **文字起こし**: 自分の声が正しく認識されるか
 3. **要約**: 適切な要約が生成されるか
 4. **エラーハンドリング**: 無効なAPIキー、ネットワークエラー等
