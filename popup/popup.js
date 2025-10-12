@@ -17,6 +17,8 @@ let recordingStartTime = null;
 let recordingTimer = null;
 let currentTranscript = null;
 let keepAliveInterval = null;
+let currentAudio = null; // 現在再生中の音声
+let currentPlayingId = null; // 現在再生中のtranscript ID
 
 // 初期化
 document.addEventListener('DOMContentLoaded', async () => {
@@ -264,6 +266,13 @@ function displayHistory(transcripts) {
         再処理
       </button>` : '';
 
+    // 再生ボタン（音声が保存されている場合のみ）
+    const playButton = transcript.audioStored ?
+      `<button class="btn btn-small btn-secondary history-play" data-id="${transcript.id}" title="音声を再生">
+        <span class="btn-icon">▶️</span>
+        再生
+      </button>` : '';
+
     return `
       <div class="history-item" data-id="${transcript.id}">
         <div class="history-item-header">
@@ -299,6 +308,7 @@ function displayHistory(transcripts) {
           </div>
           ${summaryHtml}
           <div class="history-item-actions">
+            ${playButton}
             ${retryButton}
             <button class="btn btn-small history-download" data-id="${transcript.id}">
               <span class="btn-icon">💾</span>
@@ -463,6 +473,15 @@ function setupHistoryActions(transcripts) {
       if (transcript && confirm(`「${transcript.title}」を音声ファイルから再処理しますか？`)) {
         await retryTranscription(id);
       }
+    });
+  });
+
+  // 再生
+  document.querySelectorAll('.history-play').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      await playAudio(id, btn);
     });
   });
 }
@@ -743,5 +762,105 @@ async function retryTranscription(transcriptId) {
   } catch (error) {
     console.error('Failed to retry transcription:', error);
     showError('再処理に失敗しました: ' + error.message);
+  }
+}
+
+// 音声を再生
+async function playAudio(transcriptId, buttonElement) {
+  try {
+    // 既に再生中の音声があれば停止
+    if (currentAudio && currentPlayingId === transcriptId) {
+      // 同じ音声の場合は停止
+      stopAudio();
+      return;
+    } else if (currentAudio) {
+      // 別の音声が再生中の場合は停止してから新しい音声を再生
+      stopAudio();
+    }
+
+    // 音声データを取得
+    const response = await chrome.runtime.sendMessage({
+      action: 'getAudioBlob',
+      transcriptId: transcriptId
+    });
+
+    if (!response.success) {
+      throw new Error(response.error || '音声ファイルの取得に失敗しました');
+    }
+
+    // Base64からBlobに変換
+    const byteCharacters = atob(response.audioData);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const audioBlob = new Blob([byteArray], { type: 'audio/wav' });
+
+    // Blob URLを作成
+    const audioUrl = URL.createObjectURL(audioBlob);
+
+    // Audio要素を作成して再生
+    currentAudio = new Audio(audioUrl);
+    currentPlayingId = transcriptId;
+
+    // 再生終了時のクリーンアップ
+    currentAudio.addEventListener('ended', () => {
+      stopAudio();
+      updatePlayButton(transcriptId, false);
+    });
+
+    // エラー処理
+    currentAudio.addEventListener('error', (e) => {
+      console.error('Audio playback error:', e);
+      showError('音声の再生に失敗しました');
+      stopAudio();
+      updatePlayButton(transcriptId, false);
+    });
+
+    // 再生開始
+    await currentAudio.play();
+    updatePlayButton(transcriptId, true);
+    showNotification('音声を再生中');
+
+  } catch (error) {
+    console.error('Failed to play audio:', error);
+    showError('音声の再生に失敗しました: ' + error.message);
+  }
+}
+
+// 音声停止
+function stopAudio() {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+
+    // Blob URLをクリーンアップ
+    if (currentAudio.src) {
+      URL.revokeObjectURL(currentAudio.src);
+    }
+
+    const previousId = currentPlayingId;
+    currentAudio = null;
+    currentPlayingId = null;
+
+    if (previousId) {
+      updatePlayButton(previousId, false);
+    }
+  }
+}
+
+// 再生ボタンの表示を更新
+function updatePlayButton(transcriptId, isPlaying) {
+  const button = document.querySelector(`.history-play[data-id="${transcriptId}"]`);
+  if (button) {
+    const icon = button.querySelector('.btn-icon');
+    if (isPlaying) {
+      icon.textContent = '⏸️';
+      button.title = '音声を停止';
+    } else {
+      icon.textContent = '▶️';
+      button.title = '音声を再生';
+    }
   }
 }
