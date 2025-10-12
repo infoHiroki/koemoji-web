@@ -264,6 +264,13 @@ function displayHistory(transcripts) {
         再処理
       </button>` : '';
 
+    // 音声ダウンロードボタン（音声が保存されている場合のみ）
+    const downloadAudioButton = transcript.audioStored ?
+      `<button class="btn btn-small btn-secondary history-download-audio" data-id="${transcript.id}" title="音声ファイルをダウンロード">
+        <span class="btn-icon">🎵</span>
+        音声を保存
+      </button>` : '';
+
     return `
       <div class="history-item" data-id="${transcript.id}">
         <div class="history-item-header">
@@ -300,6 +307,7 @@ function displayHistory(transcripts) {
           ${summaryHtml}
           <div class="history-item-actions">
             ${retryButton}
+            ${downloadAudioButton}
             <button class="btn btn-small history-download" data-id="${transcript.id}">
               <span class="btn-icon">💾</span>
               ダウンロード
@@ -462,6 +470,18 @@ function setupHistoryActions(transcripts) {
       const transcript = transcripts.find(t => t.id === id);
       if (transcript && confirm(`「${transcript.title}」を音声ファイルから再処理しますか？`)) {
         await retryTranscription(id);
+      }
+    });
+  });
+
+  // 音声ダウンロード
+  document.querySelectorAll('.history-download-audio').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const transcript = transcripts.find(t => t.id === id);
+      if (transcript) {
+        await downloadAudio(id, transcript);
       }
     });
   });
@@ -743,5 +763,48 @@ async function retryTranscription(transcriptId) {
   } catch (error) {
     console.error('Failed to retry transcription:', error);
     showError('再処理に失敗しました: ' + error.message);
+  }
+}
+
+// 音声ファイルをダウンロード
+async function downloadAudio(transcriptId, transcript) {
+  try {
+    showNotification('音声ファイルを取得中...');
+
+    // 音声データを取得
+    const response = await chrome.runtime.sendMessage({
+      action: 'getAudioBlob',
+      transcriptId: transcriptId
+    });
+
+    if (!response.success) {
+      throw new Error(response.error || '音声ファイルの取得に失敗しました');
+    }
+
+    // Base64からBlobに変換
+    const byteCharacters = atob(response.audioData);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const audioBlob = new Blob([byteArray], { type: 'audio/wav' });
+
+    // Blob URLを作成してダウンロード
+    const url = URL.createObjectURL(audioBlob);
+    const a = document.createElement('a');
+    a.href = url;
+
+    // ファイル名を生成
+    const filename = sanitizeFilename(transcript.title || 'audio');
+    a.download = `${filename}_audio.wav`;
+
+    a.click();
+    URL.revokeObjectURL(url);
+
+    showNotification('音声ファイルをダウンロードしました');
+  } catch (error) {
+    console.error('Failed to download audio:', error);
+    showError('音声ファイルのダウンロードに失敗しました: ' + error.message);
   }
 }
