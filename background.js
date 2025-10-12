@@ -7,12 +7,16 @@ const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB - Whisper APIの制限
 // ライブラリのインポート（Service Workerではimportを使用）
 importScripts(
   'lib/audio-encoder.js',
+  'lib/audio-storage.js',
   'lib/openai-client.js',
   'lib/storage.js'
 );
 
 // オフスクリーンドキュメントの状態
 let offscreenDocumentCreated = false;
+
+// AudioStorageインスタンス
+const audioStorage = new AudioStorage();
 
 // オフスクリーンドキュメントを作成
 async function createOffscreenDocument() {
@@ -190,6 +194,12 @@ async function handleMessage(message, sender) {
       case 'saveSettings':
         return await handleSaveSettings(message);
 
+      case 'retryTranscription':
+        return await handleRetryTranscription(message);
+
+      case 'deleteAudioFile':
+        return await handleDeleteAudioFile(message);
+
       default:
         throw new Error(`Unknown action: ${message.action}`);
     }
@@ -299,14 +309,32 @@ async function handleStopRecording(message) {
       title: dateStr,
       duration: duration,
       audioSize: audioBlob.size,
-      platform: platform
+      platform: platform,
+      audioStored: true  // 音声を保存するフラグ
     });
 
     // 保存
     await Storage.saveTranscript(transcript);
 
+    // 音声をIndexedDBに保存
+    try {
+      await audioStorage.saveAudio(transcript.id, audioBlob, {
+        duration: duration,
+        retentionHours: settings.audioRetentionHours || 24
+      });
+      console.log('Audio saved to IndexedDB for transcript:', transcript.id);
+    } catch (error) {
+      console.error('Failed to save audio to IndexedDB:', error);
+      // 音声保存に失敗してもエラーにしない（文字起こしは続行）
+    }
+
     // 非同期で文字起こし処理を開始
     transcribeAudio(audioBlob, transcript.id, settings);
+
+    // 古い音声ファイルをクリーンアップ（バックグラウンド処理）
+    cleanupAudioStorage(settings).catch(err => {
+      console.error('Audio cleanup failed:', err);
+    });
 
     // オフスクリーンドキュメントを閉じる
     await closeOffscreenDocument();
@@ -631,6 +659,82 @@ async function handleSaveSettings(message) {
     };
   } catch (error) {
     console.error('Failed to save settings:', error);
+    throw error;
+  }
+}
+
+// 音声ストレージのクリーンアップ
+async function cleanupAudioStorage(settings) {
+  try {
+    // 期限切れの音声を削除
+    const expiredCount = await audioStorage.cleanupExpiredAudios();
+
+    // 件数制限を超えた古い音声を削除
+    const maxCount = settings.maxAudioCount || 20;
+    const oldCount = await audioStorage.cleanupOldAudios(maxCount);
+
+    if (expiredCount > 0 || oldCount > 0) {
+      console.log(`Audio cleanup: ${expiredCount} expired, ${oldCount} old recordings deleted`);
+    }
+  } catch (error) {
+    console.error('Audio cleanup failed:', error);
+  }
+}
+
+// 文字起こしを再試行
+async function handleRetryTranscription(message) {
+  try {
+    const { transcriptId } = message;
+
+    if (!transcriptId) {
+      throw new Error('transcriptId is required');
+    }
+
+    // 音声ファイルを取得
+    const audioRecord = await audioStorage.getAudio(transcriptId);
+
+    if (!audioRecord || !audioRecord.audioBlob) {
+      throw new Error('音声ファイルが見つかりません。保存期間が過ぎた可能性があります。');
+    }
+
+    // 設定を読み込み
+    const settings = await Storage.loadSettings();
+
+    if (!settings.apiKey) {
+      throw new Error('APIキーが設定されていません。');
+    }
+
+    // 文字起こしを再実行
+    await transcribeAudio(audioRecord.audioBlob, transcriptId, settings);
+
+    return {
+      success: true
+    };
+  } catch (error) {
+    console.error('Failed to retry transcription:', error);
+    throw error;
+  }
+}
+
+// 音声ファイルを削除
+async function handleDeleteAudioFile(message) {
+  try {
+    const { transcriptId } = message;
+
+    if (!transcriptId) {
+      throw new Error('transcriptId is required');
+    }
+
+    await audioStorage.deleteAudio(transcriptId);
+
+    // transcriptのaudioStoredフラグを更新
+    await Storage.updateTranscript(transcriptId, { audioStored: false });
+
+    return {
+      success: true
+    };
+  } catch (error) {
+    console.error('Failed to delete audio file:', error);
     throw error;
   }
 }

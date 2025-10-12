@@ -120,6 +120,44 @@
         </div>
       </section>
 
+      <!-- 音声ファイル設定 -->
+      <section class="form-section">
+        <h2 class="section-title">💾 音声ファイル設定</h2>
+
+        <div class="form-group">
+          <label for="audioRetentionHours">
+            音声保持期間
+            <span class="label-description">録音した音声ファイルをIndexedDBに保存する期間</span>
+          </label>
+          <select id="audioRetentionHours" required>
+            <option value="24">24時間</option>
+            <option value="48">48時間（2日）</option>
+            <option value="168">7日間</option>
+            <option value="720">30日間</option>
+            <option value="-1">手動削除まで保持</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="maxAudioCount">
+            最大保持件数
+            <span class="label-description">保持する音声ファイルの最大数（古いものから自動削除）</span>
+          </label>
+          <select id="maxAudioCount" required>
+            <option value="10">10件</option>
+            <option value="20">20件</option>
+            <option value="50">50件</option>
+            <option value="100">100件</option>
+          </select>
+        </div>
+
+        <div class="info-box">
+          <strong>音声バックアップ機能:</strong>
+          録音した音声ファイルは自動的にIndexedDB（ブラウザのローカルストレージ）に保存されます。
+          文字起こしに失敗した場合でも、音声ファイルから再試行できます。
+        </div>
+      </section>
+
       <!-- アクション -->
       <div class="form-actions">
         <button id="testBtn" class="btn btn-secondary">

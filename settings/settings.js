@@ -7,6 +7,8 @@ const languageSelect = document.getElementById('language');
 const autoSummarizeCheckbox = document.getElementById('autoSummarize');
 const summaryModelSelect = document.getElementById('summaryModel');
 const summaryPromptTextarea = document.getElementById('summaryPrompt');
+const audioRetentionHoursSelect = document.getElementById('audioRetentionHours');
+const maxAudioCountSelect = document.getElementById('maxAudioCount');
 const testBtn = document.getElementById('testBtn');
 const saveBtn = document.getElementById('saveBtn');
 
@@ -39,6 +41,8 @@ async function loadSettings() {
       autoSummarizeCheckbox.checked = settings.autoSummarize !== false;
       summaryModelSelect.value = settings.summaryModel || 'gpt-4o-mini';
       summaryPromptTextarea.value = settings.summaryPrompt || '';
+      audioRetentionHoursSelect.value = String(settings.audioRetentionHours || 24);
+      maxAudioCountSelect.value = String(settings.maxAudioCount || 20);
 
       // 録音デバイスは後で設定
       if (settings.recordingDevice) {
@@ -94,6 +98,8 @@ async function handleSave() {
     const autoSummarize = autoSummarizeCheckbox.checked;
     const summaryModel = summaryModelSelect.value;
     const summaryPrompt = summaryPromptTextarea.value.trim();
+    const audioRetentionHours = parseInt(audioRetentionHoursSelect.value, 10);
+    const maxAudioCount = parseInt(maxAudioCountSelect.value, 10);
 
     console.log('Saving settings:', {
       hasApiKey: !!apiKey,
@@ -101,7 +107,9 @@ async function handleSave() {
       language,
       autoSummarize,
       summaryModel,
-      hasSummaryPrompt: !!summaryPrompt
+      hasSummaryPrompt: !!summaryPrompt,
+      audioRetentionHours,
+      maxAudioCount
     });
 
     // バリデーション
@@ -130,7 +138,9 @@ async function handleSave() {
       language,
       autoSummarize,
       summaryModel,
-      summaryPrompt
+      summaryPrompt,
+      audioRetentionHours,
+      maxAudioCount
     };
 
     console.log('Sending saveSettings message:', settingsToSave);

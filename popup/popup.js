@@ -298,6 +298,21 @@ function displayHistory(transcripts) {
         <div class="history-summary-text" data-summary="${escapeHtml(transcript.summary)}"></div>
       </div>` : '';
 
+    // エラー表示と再試行ボタン
+    const isError = transcript.transcript && transcript.transcript.startsWith('エラー:');
+    const errorHtml = isError && transcript.audioStored ?
+      `<div class="error-message">
+        <span class="btn-icon">⚠️</span>
+        文字起こしに失敗しました。音声ファイルから再試行できます。
+      </div>` : '';
+
+    // 再試行ボタン（音声が保存されている場合のみ）
+    const retryButton = transcript.audioStored ?
+      `<button class="btn btn-small btn-secondary history-retry" data-id="${transcript.id}" title="音声ファイルから文字起こしを再実行">
+        <span class="btn-icon">🔄</span>
+        再処理
+      </button>` : '';
+
     return `
       <div class="history-item" data-id="${transcript.id}">
         <div class="history-item-header">
@@ -308,9 +323,11 @@ function displayHistory(transcripts) {
           <div class="history-item__meta">
             <span>${formatDate(transcript.timestamp)}</span>
             <span>${formatDuration(transcript.duration)}</span>
+            ${transcript.audioStored ? '<span class="audio-stored-badge" title="音声ファイルが保存されています">💾</span>' : ''}
           </div>
         </div>
         <div class="history-item-detail">
+          ${errorHtml}
           <div class="history-detail-meta">
             <span class="meta-item">
               <strong>日時:</strong> ${formatDate(transcript.timestamp)}
@@ -331,6 +348,7 @@ function displayHistory(transcripts) {
           </div>
           ${summaryHtml}
           <div class="history-item-actions">
+            ${retryButton}
             <button class="btn btn-small history-download" data-id="${transcript.id}">
               <span class="btn-icon">💾</span>
               ダウンロード
@@ -469,6 +487,18 @@ function setupHistoryActions(transcripts) {
       const transcript = transcripts.find(t => t.id === id);
       if (transcript) {
         startEditingTitle(titleElement, transcript);
+      }
+    });
+  });
+
+  // 再処理
+  document.querySelectorAll('.history-retry').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const transcript = transcripts.find(t => t.id === id);
+      if (transcript && confirm(`「${transcript.title}」を音声ファイルから再処理しますか？`)) {
+        await retryTranscription(id);
       }
     });
   });
@@ -778,4 +808,26 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// 文字起こしを再試行
+async function retryTranscription(transcriptId) {
+  try {
+    showNotification('再処理を開始しています...');
+
+    const response = await chrome.runtime.sendMessage({
+      action: 'retryTranscription',
+      transcriptId: transcriptId
+    });
+
+    if (response.success) {
+      showNotification('再処理を開始しました');
+      await loadHistory();
+    } else {
+      throw new Error(response.error || '再処理の開始に失敗しました');
+    }
+  } catch (error) {
+    console.error('Failed to retry transcription:', error);
+    showError('再処理に失敗しました: ' + error.message);
+  }
 }
