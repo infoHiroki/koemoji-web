@@ -704,12 +704,8 @@ function showNotification(message) {
 // エラー表示
 function showError(message) {
   console.error('Error:', message);
-  statusText.textContent = `エラー: ${message}`;
-  statusText.style.color = '#f44336';
-  setTimeout(() => {
-    statusText.style.color = '';
-    statusText.textContent = '準備完了';
-  }, 5000);
+  alert(`エラー: ${message}`);
+  statusText.textContent = '準備完了';
 }
 
 // ユーティリティ関数
