@@ -6,16 +6,6 @@ const stopBtn = document.getElementById('stopBtn');
 const statusIndicator = document.getElementById('statusIndicator');
 const statusText = document.getElementById('statusText');
 const recordingTime = document.querySelector('.time-display');
-const transcriptSection = document.getElementById('transcriptSection');
-const transcriptDate = document.getElementById('transcriptDate');
-const transcriptDuration = document.getElementById('transcriptDuration');
-const transcriptText = document.getElementById('transcriptText');
-const summaryContent = document.getElementById('summaryContent');
-const summaryText = document.getElementById('summaryText');
-const copyTranscriptBtn = document.getElementById('copyTranscriptBtn');
-const copySummaryBtn = document.getElementById('copySummaryBtn');
-const downloadBtn = document.getElementById('downloadBtn');
-const deleteBtn = document.getElementById('deleteBtn');
 const historyList = document.getElementById('historyList');
 const deleteAllBtn = document.getElementById('deleteAllBtn');
 const refreshHistoryBtn = document.getElementById('refreshHistoryBtn');
@@ -79,12 +69,6 @@ function setupEventListeners() {
   startBtn.addEventListener('click', handleStartRecording);
   stopBtn.addEventListener('click', handleStopRecording);
 
-  // 文字起こし結果のアクション（トップセクション）
-  copyTranscriptBtn.addEventListener('click', handleCopyTranscript);
-  copySummaryBtn.addEventListener('click', handleCopySummary);
-  downloadBtn.addEventListener('click', handleDownloadTop);
-  deleteBtn.addEventListener('click', handleDeleteTop);
-
   // 履歴
   deleteAllBtn.addEventListener('click', handleDeleteAll);
   refreshHistoryBtn.addEventListener('click', loadHistory);
@@ -146,10 +130,6 @@ async function handleStopRecording() {
 
       // UI更新
       updateRecordingUI(false);
-      showTranscriptSection(true);
-
-      // 文字起こし処理中表示
-      transcriptText.textContent = '文字起こし処理中...';
       statusText.textContent = '処理中...';
     } else {
       throw new Error(response.error || '録音の停止に失敗しました');
@@ -228,65 +208,6 @@ function updateRecordingUI(recording) {
     statusIndicator.classList.remove('recording');
     statusText.textContent = '準備完了';
     recordingTime.textContent = '00:00:00';
-  }
-}
-
-// 文字起こしセクション表示
-function showTranscriptSection(show) {
-  transcriptSection.style.display = show ? 'block' : 'none';
-}
-
-// 文字起こしをコピー
-async function handleCopyTranscript() {
-  try {
-    const text = transcriptText.textContent;
-    await navigator.clipboard.writeText(text);
-    showNotification('文字起こしをコピーしました');
-  } catch (error) {
-    console.error('Failed to copy transcript:', error);
-    showError('コピーに失敗しました');
-  }
-}
-
-// AI要約をコピー
-async function handleCopySummary() {
-  try {
-    // 元のマークダウンテキストをコピー（currentTranscriptから取得）
-    const text = currentTranscript && currentTranscript.summary ? currentTranscript.summary : summaryText.textContent;
-    await navigator.clipboard.writeText(text);
-    showNotification('AI要約をコピーしました');
-  } catch (error) {
-    console.error('Failed to copy summary:', error);
-    showError('コピーに失敗しました');
-  }
-}
-
-// ダウンロード（トップセクション用）
-function handleDownloadTop() {
-  if (currentTranscript) {
-    downloadTranscript(currentTranscript);
-  }
-}
-
-// コピー・ダウンロード用テキスト生成
-function buildCopyText() {
-  let text = '# 文字起こし結果\n\n';
-  text += `日時: ${transcriptDate.textContent}\n`;
-  text += `時間: ${transcriptDuration.textContent}\n\n`;
-  text += `## 文字起こし\n\n${transcriptText.textContent}\n\n`;
-
-  if (summaryContent.style.display !== 'none') {
-    text += `## AI要約\n\n${summaryText.textContent}\n`;
-  }
-
-  return text;
-}
-
-// 削除（トップセクション用）
-async function handleDeleteTop() {
-  if (currentTranscript) {
-    await deleteTranscript(currentTranscript.id);
-    showTranscriptSection(false);
   }
 }
 
@@ -424,6 +345,18 @@ function displayHistory(transcripts) {
 
   // 履歴内のアクションボタン
   setupHistoryActions(transcripts);
+
+  // 最新のアイテムを自動展開（currentTranscriptが設定されている場合）
+  if (currentTranscript && transcripts.length > 0) {
+    const newestItem = document.querySelector(`.history-item[data-id="${currentTranscript.id}"]`);
+    if (newestItem) {
+      newestItem.classList.add('active');
+      // スクロールして表示
+      setTimeout(() => {
+        newestItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
+    }
+  }
 }
 
 // 履歴アイテムのトグル
@@ -689,7 +622,6 @@ async function handleDeleteAll() {
 
     if (response.success) {
       currentTranscript = null;
-      showTranscriptSection(false);
       await loadHistory();
       showNotification('すべての履歴を削除しました');
     } else {
@@ -699,38 +631,6 @@ async function handleDeleteAll() {
     console.error('Failed to delete all:', error);
     showError('すべての履歴の削除に失敗しました');
   }
-}
-
-// 文字起こし結果表示（上部セクション用 - 現在は使用しない）
-function displayTranscript(transcript) {
-  currentTranscript = transcript;
-
-  transcriptDate.textContent = formatDate(transcript.timestamp);
-  transcriptDuration.textContent = formatDuration(transcript.duration);
-
-  // 文字起こしを表示（プレーンテキスト）
-  transcriptText.textContent = transcript.transcript || '文字起こし結果がありません';
-
-  if (transcript.summary) {
-    summaryContent.style.display = 'block';
-    // マークダウンをHTMLに変換して表示
-    if (typeof marked !== 'undefined') {
-      marked.setOptions({
-        breaks: false,
-        gfm: true
-      });
-      summaryText.innerHTML = marked.parse(transcript.summary);
-    } else {
-      summaryText.textContent = transcript.summary;
-    }
-  } else {
-    summaryContent.style.display = 'none';
-  }
-
-  showTranscriptSection(true);
-
-  // スクロール
-  transcriptSection.scrollIntoView({ behavior: 'smooth' });
 }
 
 // メッセージハンドラー
@@ -754,11 +654,8 @@ function handleMessage(message, sender, sendResponse) {
 function handleTranscriptionComplete(data) {
   currentTranscript = data;
 
-  // まず履歴を更新
-  loadHistory().then(() => {
-    // 履歴更新後に表示（activeクラスも適用される）
-    displayTranscript(data);
-  });
+  // 履歴を更新（最新アイテムが自動展開される）
+  loadHistory();
 
   statusText.textContent = '文字起こし完了';
 }
@@ -767,21 +664,8 @@ function handleTranscriptionComplete(data) {
 function handleSummaryComplete(data) {
   if (currentTranscript && currentTranscript.id === data.id) {
     currentTranscript.summary = data.summary;
-
-    // マークダウンをHTMLに変換（表示前に内容を設定）
-    if (typeof marked !== 'undefined') {
-      marked.setOptions({
-        breaks: false,  // 単一改行を<br>に変換しない
-        gfm: true       // GitHub Flavored Markdownを使用
-      });
-      summaryText.innerHTML = marked.parse(data.summary);
-    } else {
-      summaryText.textContent = data.summary;
-    }
-
-    // 内容を設定してから表示
-    summaryContent.style.display = 'block';
   }
+
   statusText.textContent = '要約完了';
   loadHistory();
 }
