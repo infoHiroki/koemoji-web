@@ -784,7 +784,7 @@ async function downloadAudio(transcriptId, transcript) {
       byteNumbers[i] = byteCharacters.charCodeAt(i);
     }
     const byteArray = new Uint8Array(byteNumbers);
-    const audioBlob = new Blob([byteArray], { type: 'audio/webm' });
+    const audioBlob = new Blob([byteArray], { type: 'audio/wav' });
 
     // Blob URLを作成してダウンロード
     const url = URL.createObjectURL(audioBlob);
@@ -793,7 +793,7 @@ async function downloadAudio(transcriptId, transcript) {
 
     // ファイル名を生成
     const filename = sanitizeFilename(transcript.title || 'audio');
-    a.download = `${filename}_audio.webm`;
+    a.download = `${filename}_audio.wav`;
 
     a.click();
     URL.revokeObjectURL(url);
