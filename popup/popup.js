@@ -259,14 +259,14 @@ function displayHistory(transcripts) {
 
     // 再試行ボタン（音声が保存されている場合のみ）
     const retryButton = transcript.audioStored ?
-      `<button class="btn btn-small btn-secondary history-retry" data-id="${transcript.id}" title="音声ファイルから文字起こしを再実行">
+      `<button class="btn btn-small history-retry" data-id="${transcript.id}" title="音声ファイルから文字起こしを再実行">
         <span class="btn-icon">🔄</span>
         再処理
       </button>` : '';
 
     // 音声ダウンロードボタン（音声が保存されている場合のみ）
     const downloadAudioButton = transcript.audioStored ?
-      `<button class="btn btn-small btn-secondary history-download-audio" data-id="${transcript.id}" title="音声ファイルをダウンロード">
+      `<button class="btn btn-small history-download-audio" data-id="${transcript.id}" title="音声ファイルをダウンロード">
         <span class="btn-icon">🎵</span>
         音声DL
       </button>` : '';
