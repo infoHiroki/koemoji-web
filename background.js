@@ -270,9 +270,6 @@ async function handleMessage(message, sender) {
       case 'deleteAudioFile':
         return await handleDeleteAudioFile(message);
 
-      case 'getAudioBlob':
-        return await handleGetAudioBlob(message);
-
       case 'ping':
         // Keep-Alive用のpingメッセージ（何もしない）
         return { success: true, pong: true };
@@ -850,44 +847,6 @@ async function handleDeleteAudioFile(message) {
     };
   } catch (error) {
     console.error('Failed to delete audio file:', error);
-    throw error;
-  }
-}
-
-// 音声Blobを取得
-async function handleGetAudioBlob(message) {
-  try {
-    const { transcriptId } = message;
-
-    if (!transcriptId) {
-      throw new Error('transcriptId is required');
-    }
-
-    // 音声ファイルを取得
-    const audioRecord = await audioStorage.getAudio(transcriptId);
-
-    if (!audioRecord || !audioRecord.audioBlob) {
-      throw new Error('音声ファイルが見つかりません');
-    }
-
-    // BlobをBase64に変換してpopupに送信
-    const reader = new FileReader();
-    const audioData = await new Promise((resolve, reject) => {
-      reader.onloadend = () => {
-        // data:audio/wav;base64,xxxxx の base64部分だけを取り出す
-        const base64 = reader.result.split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(audioRecord.audioBlob);
-    });
-
-    return {
-      success: true,
-      audioData: audioData
-    };
-  } catch (error) {
-    console.error('Failed to get audio blob:', error);
     throw error;
   }
 }
