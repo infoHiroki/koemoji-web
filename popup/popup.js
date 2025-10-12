@@ -268,7 +268,7 @@ function displayHistory(transcripts) {
     const downloadAudioButton = transcript.audioStored ?
       `<button class="btn btn-small btn-secondary history-download-audio" data-id="${transcript.id}" title="音声ファイルをダウンロード">
         <span class="btn-icon">🎵</span>
-        音声を保存
+        音声DL
       </button>` : '';
 
     return `
@@ -310,7 +310,7 @@ function displayHistory(transcripts) {
             ${downloadAudioButton}
             <button class="btn btn-small history-download" data-id="${transcript.id}">
               <span class="btn-icon">💾</span>
-              ダウンロード
+              文字起こしDL
             </button>
             <button class="btn btn-small btn-danger history-delete" data-id="${transcript.id}">
               <span class="btn-icon">🗑️</span>
