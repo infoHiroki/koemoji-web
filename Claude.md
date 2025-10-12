@@ -142,11 +142,13 @@ koemoji-web/
 │   ├── icon-16.png
 │   ├── icon-48.png
 │   └── icon-128.png
-├── docs/
+├── documentation/
 │   ├── ARCHITECTURE.md    # 技術アーキテクチャ
 │   ├── SETUP_GUIDE.md     # セットアップ手順
 │   ├── DEVELOPMENT.md     # 開発ガイド
 │   └── API_REFERENCE.md   # API リファレンス
+├── docs/
+│   └── privacy-policy.html # プライバシーポリシー（GitHub Pages用）
 ├── README.md              # プロジェクト概要
 ├── .gitignore
 └── Claude.md              # このファイル
@@ -349,10 +351,10 @@ const response = await fetch('https://api.openai.com/v1/chat/completions', {
 ## 参考リソース
 
 ### ドキュメント
-- `/docs/ARCHITECTURE.md` - 詳細な技術設計
-- `/docs/SETUP_GUIDE.md` - セットアップ手順
-- `/docs/DEVELOPMENT.md` - 開発ガイド
-- `/docs/API_REFERENCE.md` - API仕様
+- `/documentation/ARCHITECTURE.md` - 詳細な技術設計
+- `/documentation/SETUP_GUIDE.md` - セットアップ手順
+- `/documentation/DEVELOPMENT.md` - 開発ガイド
+- `/documentation/API_REFERENCE.md` - API仕様
 
 ### デスクトップ版
 - `/Users/hirokitakamura/Documents/Dev/KoeMoji-Go`

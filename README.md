@@ -40,7 +40,7 @@ KoeMoji-Go Webは、Google MeetやZoomなどのWeb会議を自動で文字起こ
 - **VoiceMeeter** のインストール
 - 音声ルーティング設定
 
-📖 詳細は [セットアップガイド](docs/SETUP_GUIDE.md) をご覧ください。
+📖 詳細は [セットアップガイド](documentation/SETUP_GUIDE.md) をご覧ください。
 
 #### 3. OpenAI APIキーの設定
 
@@ -121,10 +121,10 @@ KoeMoji-Go Webは、Google MeetやZoomなどのWeb会議を自動で文字起こ
 
 ## ドキュメント
 
-- 📖 [技術アーキテクチャ](docs/ARCHITECTURE.md)
-- 🔧 [セットアップガイド](docs/SETUP_GUIDE.md)
-- 💻 [開発ガイド](docs/DEVELOPMENT.md)
-- 📚 [API リファレンス](docs/API_REFERENCE.md)
+- 📖 [技術アーキテクチャ](documentation/ARCHITECTURE.md)
+- 🔧 [セットアップガイド](documentation/SETUP_GUIDE.md)
+- 💻 [開発ガイド](documentation/DEVELOPMENT.md)
+- 📚 [API リファレンス](documentation/API_REFERENCE.md)
 
 ## トラブルシューティング
 
@@ -175,7 +175,7 @@ KoeMoji-Go Webは、Google MeetやZoomなどのWeb会議を自動で文字起こ
 3. **セットアップと設定**
    - 上記「クイックスタート」の手順2-3に従う
 
-📖 詳細は [開発ガイド](docs/DEVELOPMENT.md) を参照。
+📖 詳細は [開発ガイド](documentation/DEVELOPMENT.md) を参照。
 
 ### 技術スタック
 
