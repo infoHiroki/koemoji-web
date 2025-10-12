@@ -26,6 +26,7 @@ let isRecording = false;
 let recordingStartTime = null;
 let recordingTimer = null;
 let currentTranscript = null;
+let keepAliveInterval = null;
 
 // 初期化
 document.addEventListener('DOMContentLoaded', async () => {
@@ -175,6 +176,32 @@ function startRecordingTimer() {
     recordingTime.textContent =
       `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   }, 1000);
+
+  // Keep-Alive（Service Workerスリープ防止）
+  // ポップアップから定期的にpingを送る
+  startKeepAlive();
+}
+
+// Keep-Aliveを開始
+function startKeepAlive() {
+  if (keepAliveInterval) {
+    return; // 既に実行中
+  }
+
+  // 20秒ごとにbackgroundにpingを送る
+  keepAliveInterval = setInterval(() => {
+    chrome.runtime.sendMessage({ action: 'ping' }).catch(error => {
+      console.log('Keep-alive ping failed (background may be sleeping):', error);
+    });
+  }, 20000); // 20秒
+}
+
+// Keep-Aliveを停止
+function stopKeepAlive() {
+  if (keepAliveInterval) {
+    clearInterval(keepAliveInterval);
+    keepAliveInterval = null;
+  }
 }
 
 // 録音タイマー停止
@@ -183,6 +210,9 @@ function stopRecordingTimer() {
     clearInterval(recordingTimer);
     recordingTimer = null;
   }
+
+  // Keep-Aliveも停止
+  stopKeepAlive();
 }
 
 // 録音UI更新

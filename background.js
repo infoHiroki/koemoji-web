@@ -18,6 +18,36 @@ let offscreenDocumentCreated = false;
 // AudioStorageインスタンス
 const audioStorage = new AudioStorage();
 
+// Keep-Alive機構（Service Workerスリープ防止）
+let keepAliveInterval = null;
+
+// Keep-Aliveを開始
+function startKeepAlive() {
+  if (keepAliveInterval) {
+    return; // 既に実行中
+  }
+
+  console.log('Starting Keep-Alive mechanism');
+
+  // 25秒ごとにService Workerを起こす
+  keepAliveInterval = setInterval(() => {
+    console.log('Keep-Alive ping');
+    // chrome.storageへの軽い読み書きでService Workerを起こす
+    chrome.storage.local.get('keepAlive', () => {
+      chrome.storage.local.set({ keepAlive: Date.now() });
+    });
+  }, 25000); // 25秒
+}
+
+// Keep-Aliveを停止
+function stopKeepAlive() {
+  if (keepAliveInterval) {
+    clearInterval(keepAliveInterval);
+    keepAliveInterval = null;
+    console.log('Keep-Alive stopped');
+  }
+}
+
 // オフスクリーンドキュメントを作成
 async function createOffscreenDocument() {
   // 既にフラグが立っている場合はスキップ
@@ -113,6 +143,12 @@ async function sendMessageToOffscreen(message) {
   });
 }
 
+// Service Worker起動時・復帰時の処理
+chrome.runtime.onStartup.addListener(async () => {
+  console.log('Service Worker started');
+  await checkAndRestoreRecordingState();
+});
+
 // インストール時・更新時
 chrome.runtime.onInstalled.addListener(async (details) => {
   console.log('Extension installed:', details.reason);
@@ -144,7 +180,41 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   } catch (error) {
     console.log('No offscreen document to clean up');
   }
+
+  // 録音状態を確認して復旧
+  await checkAndRestoreRecordingState();
 });
+
+// 録音状態を確認して復旧
+async function checkAndRestoreRecordingState() {
+  try {
+    const state = await chrome.storage.local.get(['isRecording', 'recordingStartTime']);
+
+    if (state.isRecording && state.recordingStartTime) {
+      console.log('Restoring recording state after Service Worker restart');
+
+      // Keep-Aliveを再開
+      startKeepAlive();
+
+      // offscreen documentを再作成（念のため）
+      try {
+        await createOffscreenDocument();
+        console.log('Offscreen document restored');
+      } catch (error) {
+        console.error('Failed to restore offscreen document:', error);
+
+        // 復旧失敗時は録音状態をクリア
+        await chrome.storage.local.set({
+          isRecording: false,
+          recordingStartTime: null
+        });
+        stopKeepAlive();
+      }
+    }
+  } catch (error) {
+    console.error('Failed to check recording state:', error);
+  }
+}
 
 // メッセージリスナー
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -200,6 +270,10 @@ async function handleMessage(message, sender) {
       case 'deleteAudioFile':
         return await handleDeleteAudioFile(message);
 
+      case 'ping':
+        // Keep-Alive用のpingメッセージ（何もしない）
+        return { success: true, pong: true };
+
       default:
         throw new Error(`Unknown action: ${message.action}`);
     }
@@ -252,11 +326,30 @@ async function handleStartRecording(message) {
 
     console.log('Recording started in offscreen document');
 
+    // Keep-Aliveを開始（Service Workerスリープ防止）
+    startKeepAlive();
+
+    // 録音状態を永続化
+    await chrome.storage.local.set({
+      isRecording: true,
+      recordingStartTime: Date.now()
+    });
+
     return {
       success: true
     };
   } catch (error) {
     console.error('Failed to start recording:', error);
+
+    // エラー時はKeep-Aliveを停止
+    stopKeepAlive();
+
+    // 録音状態をクリア
+    await chrome.storage.local.set({
+      isRecording: false,
+      recordingStartTime: null
+    });
+
     throw error;
   }
 }
@@ -336,6 +429,15 @@ async function handleStopRecording(message) {
       console.error('Audio cleanup failed:', err);
     });
 
+    // Keep-Aliveを停止
+    stopKeepAlive();
+
+    // 録音状態をクリア
+    await chrome.storage.local.set({
+      isRecording: false,
+      recordingStartTime: null
+    });
+
     // オフスクリーンドキュメントを閉じる
     await closeOffscreenDocument();
 
@@ -345,6 +447,16 @@ async function handleStopRecording(message) {
     };
   } catch (error) {
     console.error('Failed to stop recording:', error);
+
+    // エラー時でもKeep-Aliveを停止
+    stopKeepAlive();
+
+    // 録音状態をクリア
+    await chrome.storage.local.set({
+      isRecording: false,
+      recordingStartTime: null
+    });
+
     throw error;
   }
 }
