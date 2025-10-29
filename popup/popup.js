@@ -10,6 +10,11 @@ const historyList = document.getElementById('historyList');
 const deleteAllBtn = document.getElementById('deleteAllBtn');
 const refreshHistoryBtn = document.getElementById('refreshHistoryBtn');
 const settingsBtn = document.getElementById('settingsBtn');
+const progressModal = document.getElementById('progressModal');
+const progressBar = document.getElementById('progressBar');
+const progressStatus = document.getElementById('progressStatus');
+const progressCounter = document.getElementById('progressCounter');
+const progressPercentage = document.getElementById('progressPercentage');
 
 // 状態管理
 let isRecording = false;
@@ -17,6 +22,8 @@ let recordingStartTime = null;
 let recordingTimer = null;
 let currentTranscript = null;
 let keepAliveInterval = null;
+let totalChunks = 0;
+let completedChunks = 0;
 
 // 初期化
 document.addEventListener('DOMContentLoaded', async () => {
@@ -638,11 +645,23 @@ function handleMessage(message, sender, sendResponse) {
   console.log('Received message:', message);
 
   switch (message.action) {
+    case 'processingStarted':
+      handleProcessingStarted(message);
+      break;
+    case 'chunkTranscribed':
+      handleChunkTranscribed(message);
+      break;
     case 'transcriptionComplete':
       handleTranscriptionComplete(message.data);
       break;
     case 'summaryComplete':
       handleSummaryComplete(message.data);
+      break;
+    case 'recordingWarning':
+      handleRecordingWarning(message);
+      break;
+    case 'recordingAutoStop':
+      handleRecordingAutoStop(message);
       break;
     case 'error':
       showError(message.error);
@@ -650,9 +669,53 @@ function handleMessage(message, sender, sendResponse) {
   }
 }
 
+// 処理開始（プログレスモーダル表示）
+function handleProcessingStarted(message) {
+  totalChunks = message.chunks || 0;
+  completedChunks = 0;
+
+  // プログレスモーダルを表示
+  showProgressModal();
+  updateProgress(0, totalChunks);
+}
+
+// チャンク文字起こし完了（プログレス更新）
+function handleChunkTranscribed(message) {
+  completedChunks = message.chunk || 0;
+  totalChunks = message.total || totalChunks;
+
+  updateProgress(completedChunks, totalChunks);
+}
+
+// プログレスモーダルを表示
+function showProgressModal() {
+  progressModal.style.display = 'flex';
+}
+
+// プログレスモーダルを非表示
+function hideProgressModal() {
+  progressModal.style.display = 'none';
+}
+
+// プログレス更新
+function updateProgress(completed, total) {
+  const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  // プログレスバーの幅を更新
+  progressBar.style.width = `${percentage}%`;
+
+  // テキスト更新
+  progressStatus.textContent = `チャンク ${completed}/${total} 処理中`;
+  progressCounter.textContent = `${completed}/${total}`;
+  progressPercentage.textContent = `${percentage}%`;
+}
+
 // 文字起こし完了
 function handleTranscriptionComplete(data) {
   currentTranscript = data;
+
+  // プログレスモーダルを非表示
+  hideProgressModal();
 
   // 履歴を更新（最新アイテムが自動展開される）
   loadHistory();
@@ -740,4 +803,40 @@ async function retryTranscription(transcriptId) {
     console.error('Failed to retry transcription:', error);
     showError('再処理に失敗しました: ' + error.message);
   }
+}
+
+// 録音時間警告
+function handleRecordingWarning(message) {
+  const { remainingMinutes } = message;
+
+  // 警告を表示
+  statusText.textContent = `⚠️ 残り${remainingMinutes}分で録音が自動停止します`;
+
+  // アラートで通知
+  alert(
+    `⚠️ 録音時間警告\n\n` +
+    `録音時間が2時間50分を超えました。\n` +
+    `残り${remainingMinutes}分で自動的に録音が停止されます。\n\n` +
+    `費用対策のため、最大録音時間は3時間に制限されています。`
+  );
+}
+
+// 録音自動停止
+function handleRecordingAutoStop(message) {
+  const { duration } = message;
+  const minutes = Math.floor(duration / 60);
+
+  // 録音停止状態に更新
+  isRecording = false;
+  updateRecordingUI(false);
+
+  // 通知
+  statusText.textContent = '録音が自動停止されました';
+
+  // アラートで通知
+  alert(
+    `🛑 録音自動停止\n\n` +
+    `録音時間が3時間（${minutes}分）に達したため、自動的に停止されました。\n\n` +
+    `文字起こし処理が開始されます。`
+  );
 }

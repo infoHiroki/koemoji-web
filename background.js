@@ -270,6 +270,12 @@ async function handleMessage(message, sender) {
       case 'deleteAudioFile':
         return await handleDeleteAudioFile(message);
 
+      case 'recordingWarning':
+        return await handleRecordingWarning(message);
+
+      case 'recordingAutoStop':
+        return await handleRecordingAutoStop(message);
+
       case 'ping':
         // Keep-Alive用のpingメッセージ（何もしない）
         return { success: true, pong: true };
@@ -371,9 +377,9 @@ async function handleStopRecording(message) {
       throw new Error(response.error || '録音の停止に失敗しました');
     }
 
-    const { audioBlob: audioBase64, duration } = response;
+    const { chunks, totalDuration } = response;
 
-    console.log('Recording stopped, starting transcription');
+    console.log(`Recording stopped, received ${chunks.length} chunks`);
 
     // 設定を読み込み
     const settings = await Storage.loadSettings();
@@ -381,9 +387,6 @@ async function handleStopRecording(message) {
     if (!settings.apiKey) {
       throw new Error('APIキーが設定されていません。設定画面でAPIキーを入力してください。');
     }
-
-    // Base64からBlobに変換
-    const audioBlob = await base64ToBlob(audioBase64);
 
     // プラットフォーム検出
     const platform = await detectPlatform();
@@ -400,34 +403,23 @@ async function handleStopRecording(message) {
     // 文字起こし結果を作成（処理中状態）
     const transcript = Storage.createTranscript({
       title: dateStr,
-      duration: duration,
-      audioSize: audioBlob.size,
+      duration: totalDuration,
+      audioSize: chunks.reduce((sum, chunk) => sum + chunk.size, 0),
       platform: platform,
-      audioStored: true  // 音声を保存するフラグ
+      audioStored: false  // チャンク分割の場合は音声を保存しない
     });
 
     // 保存
     await Storage.saveTranscript(transcript);
 
-    // 音声をIndexedDBに保存
-    try {
-      await audioStorage.saveAudio(transcript.id, audioBlob, {
-        duration: duration,
-        retentionHours: settings.audioRetentionHours || 24
-      });
-      console.log('Audio saved to IndexedDB for transcript:', transcript.id);
-    } catch (error) {
-      console.error('Failed to save audio to IndexedDB:', error);
-      // 音声保存に失敗してもエラーにしない（文字起こしは続行）
-    }
+    // UI通知: 処理開始
+    notifyPopup({
+      action: 'processingStarted',
+      chunks: chunks.length
+    });
 
     // 非同期で文字起こし処理を開始
-    transcribeAudio(audioBlob, transcript.id, settings);
-
-    // 古い音声ファイルをクリーンアップ（バックグラウンド処理）
-    cleanupAudioStorage(settings).catch(err => {
-      console.error('Audio cleanup failed:', err);
-    });
+    transcribeChunksAndSummarize(chunks, transcript.id, settings);
 
     // Keep-Aliveを停止
     stopKeepAlive();
@@ -593,6 +585,118 @@ async function transcribeAudio(audioBlob, transcriptId, settings) {
     }
   } catch (error) {
     console.error('Transcription failed:', error);
+
+    // エラーを保存
+    await Storage.updateTranscript(transcriptId, {
+      transcript: `エラー: ${error.message}`
+    });
+
+    // Popupに通知
+    notifyPopup({
+      action: 'error',
+      error: error.message
+    });
+  }
+}
+
+// 並列実行数を制限してPromiseを実行
+async function limitedParallel(tasks, limit = 3) {
+  const results = [];
+  const executing = [];
+
+  for (const [index, task] of tasks.entries()) {
+    const promise = Promise.resolve().then(() => task()).then(result => {
+      executing.splice(executing.indexOf(promise), 1);
+      return result;
+    });
+
+    results.push(promise);
+    executing.push(promise);
+
+    if (executing.length >= limit) {
+      await Promise.race(executing);
+    }
+  }
+
+  return Promise.all(results);
+}
+
+// チャンクを並列処理して文字起こし→結合→要約（非同期）
+async function transcribeChunksAndSummarize(chunks, transcriptId, settings) {
+  try {
+    console.log(`Starting parallel transcription for ${chunks.length} chunks`);
+
+    // OpenAI Clientを初期化
+    const client = new OpenAIClient(settings.apiKey);
+
+    // 各チャンクのBase64をBlobに変換
+    const chunksWithBlobs = await Promise.all(
+      chunks.map(async (chunk) => ({
+        ...chunk,
+        blob: await base64ToBlob(chunk.audioBlob)
+      }))
+    );
+
+    // 並列文字起こし処理（最大3並列でレート制限を回避）
+    const transcriptionTasks = chunksWithBlobs.map((chunk, index) => async () => {
+      try {
+        console.log(`Transcribing chunk ${index + 1}/${chunks.length} (${chunk.duration}s)`);
+
+        // 文字起こし
+        const result = await client.transcribe(chunk.blob, {
+          language: settings.language
+        });
+
+        // 進捗通知
+        notifyPopup({
+          action: 'chunkTranscribed',
+          chunk: index + 1,
+          total: chunks.length,
+          transcriptId: transcriptId
+        });
+
+        console.log(`Chunk ${index + 1} transcription completed`);
+
+        return {
+          index: chunk.index,
+          text: result.text,
+          startTime: chunk.startTime,
+          duration: chunk.duration
+        };
+      } catch (error) {
+        console.error(`Failed to transcribe chunk ${index + 1}:`, error);
+        throw error;
+      }
+    });
+
+    // 並列数を制限して実行（最大3並列）
+    const transcribedChunks = await limitedParallel(transcriptionTasks, 3);
+
+    // チャンクを時系列順にソート（念のため）
+    transcribedChunks.sort((a, b) => a.index - b.index);
+
+    // 文字起こし結果を結合
+    const fullTranscript = transcribedChunks.map(chunk => chunk.text).join('\n\n');
+
+    console.log('All chunks transcribed, combined transcript length:', fullTranscript.length);
+
+    // 文字起こし結果を保存
+    await Storage.updateTranscript(transcriptId, {
+      transcript: fullTranscript
+    });
+
+    // Popupに通知
+    notifyPopup({
+      action: 'transcriptionComplete',
+      data: await Storage.getTranscript(transcriptId)
+    });
+
+    // 自動要約が有効な場合
+    if (settings.autoSummarize) {
+      await generateSummary(transcriptId, fullTranscript, settings);
+    }
+  } catch (error) {
+    console.error('Parallel transcription failed:', error);
 
     // エラーを保存
     await Storage.updateTranscript(transcriptId, {
@@ -848,6 +952,61 @@ async function handleDeleteAudioFile(message) {
   } catch (error) {
     console.error('Failed to delete audio file:', error);
     throw error;
+  }
+}
+
+// 録音時間警告
+async function handleRecordingWarning(message) {
+  try {
+    const { duration, remainingSeconds } = message;
+    const remainingMinutes = Math.floor(remainingSeconds / 60);
+
+    console.warn(`Recording duration warning: ${Math.floor(duration / 60)} minutes elapsed, ${remainingMinutes} minutes remaining`);
+
+    // Popupに警告を通知
+    notifyPopup({
+      action: 'recordingWarning',
+      duration: duration,
+      remainingMinutes: remainingMinutes
+    });
+
+    return {
+      success: true
+    };
+  } catch (error) {
+    console.error('Failed to handle recording warning:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// 録音自動停止
+async function handleRecordingAutoStop(message) {
+  try {
+    const { duration } = message;
+
+    console.warn(`Recording auto-stopped after ${Math.floor(duration / 60)} minutes`);
+
+    // Popupに自動停止を通知
+    notifyPopup({
+      action: 'recordingAutoStop',
+      duration: duration
+    });
+
+    // 録音を停止
+    await handleStopRecording({});
+
+    return {
+      success: true
+    };
+  } catch (error) {
+    console.error('Failed to handle recording auto-stop:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 }
 

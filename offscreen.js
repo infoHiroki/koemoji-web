@@ -2,8 +2,15 @@
 
 console.log('Offscreen document loaded');
 
+// 定数
+const MAX_RECORDING_DURATION = 3 * 60 * 60; // 3時間（秒）
+const WARNING_DURATION = 2 * 60 * 60 + 50 * 60; // 2時間50分（秒）
+
 // 音声録音インスタンス
 let audioRecorder = null;
+let recordingStartTime = null;
+let durationCheckInterval = null;
+let warningShown = false;
 
 // メッセージリスナー
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -59,6 +66,11 @@ async function handleStartRecording(message) {
     // 録音開始
     await audioRecorder.start(deviceId);
 
+    // 録音時間監視を開始
+    recordingStartTime = Date.now();
+    warningShown = false;
+    startDurationCheck();
+
     console.log('Recording started successfully');
 
     return {
@@ -79,25 +91,47 @@ async function handleStopRecording(message) {
 
     console.log('Stopping recording...');
 
+    // 時間監視を停止
+    stopDurationCheck();
+
     // 録音停止
     const audioBlob = await audioRecorder.stop();
-    const duration = audioRecorder.getDuration();
+    const totalDuration = audioRecorder.getDuration();
 
     console.log('Recording stopped:', {
       size: audioBlob.size,
-      duration
+      duration: totalDuration
     });
 
-    // BlobをBase64に変換
-    const audioBase64 = await blobToBase64(audioBlob);
+    // チャンク分割（10分 = 600秒）
+    console.log('Splitting audio into chunks...');
+    const chunks = await AudioEncoder.splitAudio(audioBlob, 600);
+    console.log(`Audio split into ${chunks.length} chunks`);
+
+    // メモリ解放：元のBlobを破棄
+    audioBlob = null;
+
+    // 各チャンクのBlobをBase64に変換
+    console.log('Converting chunks to Base64...');
+    const chunksData = await Promise.all(
+      chunks.map(async (chunk) => ({
+        index: chunk.index,
+        audioBlob: await blobToBase64(chunk.blob), // Base64に変換
+        startTime: chunk.startTime,
+        duration: chunk.duration,
+        size: chunk.size
+      }))
+    );
 
     // リセット
     audioRecorder = null;
+    recordingStartTime = null;
+    warningShown = false;
 
     return {
       success: true,
-      audioBlob: audioBase64,
-      duration: duration
+      chunks: chunksData,
+      totalDuration: totalDuration
     };
   } catch (error) {
     console.error('Failed to stop recording:', error);
@@ -130,4 +164,62 @@ async function blobToBase64(blob) {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+// 録音時間監視を開始
+function startDurationCheck() {
+  // 既存のインターバルがあればクリア
+  if (durationCheckInterval) {
+    clearInterval(durationCheckInterval);
+  }
+
+  // 10秒ごとに録音時間をチェック
+  durationCheckInterval = setInterval(() => {
+    if (!recordingStartTime || !audioRecorder) {
+      stopDurationCheck();
+      return;
+    }
+
+    const elapsedSeconds = (Date.now() - recordingStartTime) / 1000;
+
+    // 2時間50分で警告
+    if (elapsedSeconds >= WARNING_DURATION && !warningShown) {
+      warningShown = true;
+      console.warn(`Recording duration warning: ${Math.floor(elapsedSeconds / 60)} minutes`);
+
+      // Backgroundスクリプトに警告を送信
+      chrome.runtime.sendMessage({
+        action: 'recordingWarning',
+        duration: elapsedSeconds,
+        remainingSeconds: MAX_RECORDING_DURATION - elapsedSeconds
+      }).catch(error => {
+        console.error('Failed to send warning:', error);
+      });
+    }
+
+    // 3時間で自動停止
+    if (elapsedSeconds >= MAX_RECORDING_DURATION) {
+      console.warn('Recording duration limit reached. Auto-stopping...');
+
+      // Backgroundスクリプトに自動停止を通知
+      chrome.runtime.sendMessage({
+        action: 'recordingAutoStop',
+        duration: elapsedSeconds
+      }).catch(error => {
+        console.error('Failed to send auto-stop:', error);
+      });
+
+      // 録音を自動停止（内部処理）
+      stopDurationCheck();
+      // 注意: 実際の停止はbackgroundスクリプト経由で行う
+    }
+  }, 10000); // 10秒ごと
+}
+
+// 録音時間監視を停止
+function stopDurationCheck() {
+  if (durationCheckInterval) {
+    clearInterval(durationCheckInterval);
+    durationCheckInterval = null;
+  }
 }

@@ -67,6 +67,31 @@
     </footer>
   </div>
 
+  <!-- プログレスモーダル -->
+  <div id="progressModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <h2 class="modal-title">🔄 処理中...</h2>
+      <p class="modal-description">
+        音声を文字起こししています。このまましばらくお待ちください。
+      </p>
+
+      <div class="progress-info">
+        <div class="progress-text">
+          <span id="progressStatus">チャンク処理中</span>
+          <span id="progressCounter">0/0</span>
+        </div>
+        <div class="progress-bar-container">
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+        <div class="progress-percentage" id="progressPercentage">0%</div>
+      </div>
+
+      <p class="modal-note">
+        ブラウザを閉じないでください。処理は数分かかる場合があります。
+      </p>
+    </div>
+  </div>
+
   <script src="marked.min.js"></script>
   <script src="popup.js"></script>
 </body>
