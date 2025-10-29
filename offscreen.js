@@ -1,6 +1,9 @@
 // offscreen.js - オフスクリーンドキュメント（バックグラウンド録音）
 
 console.log('Offscreen document loaded');
+console.log('AudioRecorder available:', typeof AudioRecorder);
+console.log('AudioEncoder available:', typeof AudioEncoder);
+console.log('AudioEncoder.splitAudio available:', typeof AudioEncoder?.splitAudio);
 
 // 定数
 const MAX_RECORDING_DURATION = 3 * 60 * 60; // 3時間（秒）
