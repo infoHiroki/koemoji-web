@@ -9,8 +9,7 @@
     "storage",
     "unlimitedStorage",
     "activeTab",
-    "offscreen",
-    "audioCapture"
+    "offscreen"
   ],
 
   "host_permissions": [],

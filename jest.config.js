@@ -1,12 +1,12 @@
 module.exports = {
   testEnvironment: 'jsdom',
-  testMatch: ['**/__tests__/**/*.test.js'],
+  testMatch: ['**/tests/**/*.test.js'],
   collectCoverageFrom: [
     'lib/**/*.js',
     'background.js',
     'offscreen.js',
     '!lib/marked.min.js',
-    '!**/__tests__/**'
+    '!**/tests/**'
   ],
   coverageThreshold: {
     global: {
@@ -16,5 +16,5 @@ module.exports = {
       statements: 70
     }
   },
-  setupFiles: ['<rootDir>/__tests__/setup.js']
+  setupFiles: ['<rootDir>/tests/setup.js']
 };
