@@ -106,9 +106,10 @@ async function handleStopRecording(message) {
       duration: totalDuration
     });
 
-    // チャンク分割（10分 = 600秒）
+    // チャンク分割（3分 = 180秒）
+    // 5分録音で約28MBになるため、3分に短縮して25MB制限内に収める
     console.log('Splitting audio into chunks...');
-    const chunks = await AudioEncoder.splitAudio(audioBlob, 600);
+    const chunks = await AudioEncoder.splitAudio(audioBlob, 180);
     console.log(`Audio split into ${chunks.length} chunks`);
 
     // メモリ解放：元のBlobを破棄
