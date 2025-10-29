@@ -1,9 +1,15 @@
 // Jest setup file - Chrome API mocks and global setup
 
+// Mock Chrome storage - in-memory storage for tests
+const chromeStorageData = {
+  sync: {},
+  local: {}
+};
+
 // Mock Chrome APIs
 global.chrome = {
   runtime: {
-    sendMessage: jest.fn(),
+    sendMessage: jest.fn(() => Promise.resolve()),
     onMessage: {
       addListener: jest.fn()
     },
@@ -12,12 +18,68 @@ global.chrome = {
   },
   storage: {
     sync: {
-      get: jest.fn(),
-      set: jest.fn()
+      get: jest.fn((keys) => {
+        if (typeof keys === 'string') {
+          return Promise.resolve({ [keys]: chromeStorageData.sync[keys] });
+        } else if (Array.isArray(keys)) {
+          const result = {};
+          keys.forEach(key => {
+            result[key] = chromeStorageData.sync[key];
+          });
+          return Promise.resolve(result);
+        } else if (keys === null || keys === undefined) {
+          return Promise.resolve({ ...chromeStorageData.sync });
+        }
+        return Promise.resolve({});
+      }),
+      set: jest.fn((items) => {
+        Object.assign(chromeStorageData.sync, items);
+        return Promise.resolve();
+      }),
+      remove: jest.fn((keys) => {
+        if (typeof keys === 'string') {
+          delete chromeStorageData.sync[keys];
+        } else if (Array.isArray(keys)) {
+          keys.forEach(key => delete chromeStorageData.sync[key]);
+        }
+        return Promise.resolve();
+      }),
+      clear: jest.fn(() => {
+        chromeStorageData.sync = {};
+        return Promise.resolve();
+      })
     },
     local: {
-      get: jest.fn(),
-      set: jest.fn()
+      get: jest.fn((keys) => {
+        if (typeof keys === 'string') {
+          return Promise.resolve({ [keys]: chromeStorageData.local[keys] });
+        } else if (Array.isArray(keys)) {
+          const result = {};
+          keys.forEach(key => {
+            result[key] = chromeStorageData.local[key];
+          });
+          return Promise.resolve(result);
+        } else if (keys === null || keys === undefined) {
+          return Promise.resolve({ ...chromeStorageData.local });
+        }
+        return Promise.resolve({});
+      }),
+      set: jest.fn((items) => {
+        Object.assign(chromeStorageData.local, items);
+        return Promise.resolve();
+      }),
+      remove: jest.fn((keys) => {
+        if (typeof keys === 'string') {
+          delete chromeStorageData.local[keys];
+        } else if (Array.isArray(keys)) {
+          keys.forEach(key => delete chromeStorageData.local[key]);
+        }
+        return Promise.resolve();
+      }),
+      clear: jest.fn(() => {
+        chromeStorageData.local = {};
+        return Promise.resolve();
+      })
     }
   },
   offscreen: {
@@ -28,6 +90,9 @@ global.chrome = {
     query: jest.fn()
   }
 };
+
+// Export storage data for test cleanup
+global.chromeStorageData = chromeStorageData;
 
 // Mock Web APIs
 global.fetch = jest.fn();
