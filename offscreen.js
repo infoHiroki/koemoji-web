@@ -98,7 +98,7 @@ async function handleStopRecording(message) {
     stopDurationCheck();
 
     // 録音停止
-    const audioBlob = await audioRecorder.stop();
+    let audioBlob = await audioRecorder.stop();
     const totalDuration = audioRecorder.getDuration();
 
     console.log('Recording stopped:', {
