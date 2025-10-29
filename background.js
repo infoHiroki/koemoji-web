@@ -9,7 +9,9 @@ importScripts(
   'lib/audio-encoder.js',
   'lib/audio-storage.js',
   'lib/openai-client.js',
-  'lib/storage.js'
+  'lib/storage.js',
+  'lib/job-queue.js',
+  'lib/job-processor.js'
 );
 
 // オフスクリーンドキュメントの状態
@@ -147,6 +149,7 @@ async function sendMessageToOffscreen(message) {
 chrome.runtime.onStartup.addListener(async () => {
   console.log('Service Worker started');
   await checkAndRestoreRecordingState();
+  await startJobProcessor();
 });
 
 // インストール時・更新時
@@ -183,6 +186,9 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
   // 録音状態を確認して復旧
   await checkAndRestoreRecordingState();
+
+  // ジョブプロセッサーを起動
+  await startJobProcessor();
 });
 
 // 録音状態を確認して復旧
@@ -213,6 +219,29 @@ async function checkAndRestoreRecordingState() {
     }
   } catch (error) {
     console.error('Failed to check recording state:', error);
+  }
+}
+
+// ジョブプロセッサーを起動（Service Worker起動時に実行）
+async function startJobProcessor() {
+  try {
+    console.log('Starting job processor...');
+
+    // 設定を読み込み
+    const settings = await Storage.loadSettings();
+
+    // APIキーが設定されていない場合はスキップ
+    if (!settings.apiKey) {
+      console.log('API key not set, skipping job processor');
+      return;
+    }
+
+    // ジョブプロセッサーを起動
+    await JobProcessor.start(settings);
+
+    console.log('Job processor started successfully');
+  } catch (error) {
+    console.error('Failed to start job processor:', error);
   }
 }
 
@@ -412,17 +441,19 @@ async function handleStopRecording(message) {
     // 保存
     await Storage.saveTranscript(transcript);
 
-    // UI通知: 処理開始
-    notifyPopup({
-      action: 'processingStarted',
-      chunks: chunks.length
+    // ジョブをキューに追加
+    await JobQueue.addJob({
+      transcriptId: transcript.id,
+      chunks: chunks,
+      metadata: {
+        title: transcript.title,
+        duration: totalDuration,
+        platform: platform,
+        audioSize: transcript.audioSize
+      }
     });
 
-    // 非同期で文字起こし処理を開始
-    transcribeChunksAndSummarize(chunks, transcript.id, settings);
-
-    // Keep-Aliveを停止
-    stopKeepAlive();
+    console.log(`Job added to queue: ${transcript.id}`);
 
     // 録音状態をクリア
     await chrome.storage.local.set({
@@ -433,15 +464,15 @@ async function handleStopRecording(message) {
     // オフスクリーンドキュメントを閉じる
     await closeOffscreenDocument();
 
+    // ジョブプロセッサーを起動（キューにジョブがあれば処理開始）
+    startJobProcessor();
+
     return {
       success: true,
       transcriptId: transcript.id
     };
   } catch (error) {
     console.error('Failed to stop recording:', error);
-
-    // エラー時でもKeep-Aliveを停止
-    stopKeepAlive();
 
     // 録音状態をクリア
     await chrome.storage.local.set({
@@ -528,230 +559,6 @@ async function handleTranscribeAudio(message) {
   } catch (error) {
     console.error('Failed to start transcription:', error);
     throw error;
-  }
-}
-
-// Base64をBlobに変換
-async function base64ToBlob(base64) {
-  const response = await fetch(base64);
-  return await response.blob();
-}
-
-// 文字起こし処理（非同期）
-async function transcribeAudio(audioBlob, transcriptId, settings) {
-  try {
-    console.log('Starting transcription...');
-
-    // OpenAI Clientを初期化
-    const client = new OpenAIClient(settings.apiKey);
-
-    // Whisper APIはWebMも対応しているので、そのまま送信
-    // （Service WorkerではAudioContextが使えないためWAV変換をスキップ）
-    console.log('Transcribing audio blob:', {
-      type: audioBlob.type,
-      size: audioBlob.size
-    });
-
-    // ファイルサイズチェック（25MB超える場合はエラー）
-    if (audioBlob.size > MAX_FILE_SIZE) {
-      throw new Error(
-        `ファイルサイズが大きすぎます（${(audioBlob.size / 1024 / 1024).toFixed(1)}MB）。` +
-        `録音時間を短くしてください（推奨: 10分以内）。`
-      );
-    }
-
-    // 文字起こし
-    const result = await client.transcribe(audioBlob, {
-      language: settings.language
-    });
-    const transcriptText = result.text;
-
-    console.log('Transcription completed');
-
-    // 文字起こし結果を更新
-    await Storage.updateTranscript(transcriptId, {
-      transcript: transcriptText
-    });
-
-    // Popupに通知
-    notifyPopup({
-      action: 'transcriptionComplete',
-      data: await Storage.getTranscript(transcriptId)
-    });
-
-    // 自動要約が有効な場合
-    if (settings.autoSummarize) {
-      await generateSummary(transcriptId, transcriptText, settings);
-    }
-  } catch (error) {
-    console.error('Transcription failed:', error);
-
-    // エラーを保存
-    await Storage.updateTranscript(transcriptId, {
-      transcript: `エラー: ${error.message}`
-    });
-
-    // Popupに通知
-    notifyPopup({
-      action: 'error',
-      error: error.message
-    });
-  }
-}
-
-// 並列実行数を制限してPromiseを実行
-async function limitedParallel(tasks, limit = 3) {
-  const results = [];
-  const executing = [];
-
-  for (const [index, task] of tasks.entries()) {
-    const promise = Promise.resolve().then(() => task()).then(result => {
-      executing.splice(executing.indexOf(promise), 1);
-      return result;
-    });
-
-    results.push(promise);
-    executing.push(promise);
-
-    if (executing.length >= limit) {
-      await Promise.race(executing);
-    }
-  }
-
-  return Promise.all(results);
-}
-
-// チャンクを並列処理して文字起こし→結合→要約（非同期）
-async function transcribeChunksAndSummarize(chunks, transcriptId, settings) {
-  try {
-    console.log(`Starting parallel transcription for ${chunks.length} chunks`);
-
-    // OpenAI Clientを初期化
-    const client = new OpenAIClient(settings.apiKey);
-
-    // 各チャンクのBase64をBlobに変換
-    const chunksWithBlobs = await Promise.all(
-      chunks.map(async (chunk) => ({
-        ...chunk,
-        blob: await base64ToBlob(chunk.audioBlob)
-      }))
-    );
-
-    // 並列文字起こし処理（最大3並列でレート制限を回避）
-    const transcriptionTasks = chunksWithBlobs.map((chunk, index) => async () => {
-      try {
-        console.log(`Transcribing chunk ${index + 1}/${chunks.length} (${chunk.duration}s)`);
-
-        // 文字起こし
-        const result = await client.transcribe(chunk.blob, {
-          language: settings.language
-        });
-
-        // 進捗通知
-        notifyPopup({
-          action: 'chunkTranscribed',
-          chunk: index + 1,
-          total: chunks.length,
-          transcriptId: transcriptId
-        });
-
-        console.log(`Chunk ${index + 1} transcription completed`);
-
-        return {
-          index: chunk.index,
-          text: result.text,
-          startTime: chunk.startTime,
-          duration: chunk.duration
-        };
-      } catch (error) {
-        console.error(`Failed to transcribe chunk ${index + 1}:`, error);
-        throw error;
-      }
-    });
-
-    // 並列数を制限して実行（最大3並列）
-    const transcribedChunks = await limitedParallel(transcriptionTasks, 3);
-
-    // チャンクを時系列順にソート（念のため）
-    transcribedChunks.sort((a, b) => a.index - b.index);
-
-    // 文字起こし結果を結合
-    const fullTranscript = transcribedChunks.map(chunk => chunk.text).join('\n\n');
-
-    console.log('All chunks transcribed, combined transcript length:', fullTranscript.length);
-
-    // 文字起こし結果を保存
-    await Storage.updateTranscript(transcriptId, {
-      transcript: fullTranscript
-    });
-
-    // Popupに通知
-    notifyPopup({
-      action: 'transcriptionComplete',
-      data: await Storage.getTranscript(transcriptId)
-    });
-
-    // 自動要約が有効な場合
-    if (settings.autoSummarize) {
-      await generateSummary(transcriptId, fullTranscript, settings);
-    }
-  } catch (error) {
-    console.error('Parallel transcription failed:', error);
-
-    // エラーを保存
-    await Storage.updateTranscript(transcriptId, {
-      transcript: `エラー: ${error.message}`
-    });
-
-    // Popupに通知
-    notifyPopup({
-      action: 'error',
-      error: error.message
-    });
-  }
-}
-
-// 要約生成（非同期）
-async function generateSummary(transcriptId, transcriptText, settings) {
-  try {
-    console.log('Generating summary...');
-
-    // OpenAI Clientを初期化
-    const client = new OpenAIClient(settings.apiKey);
-
-    // 要約生成（カスタムプロンプトとモデルがあれば使用）
-    const options = {};
-    if (settings.summaryPrompt) {
-      options.customPrompt = settings.summaryPrompt;
-    }
-    if (settings.summaryModel) {
-      options.model = settings.summaryModel;
-    }
-    const result = await client.summarize(transcriptText, options);
-
-    console.log('Summary generated');
-
-    // 要約を保存
-    await Storage.updateTranscript(transcriptId, {
-      summary: result.summary
-    });
-
-    // Popupに通知
-    notifyPopup({
-      action: 'summaryComplete',
-      data: {
-        id: transcriptId,
-        summary: result.summary
-      }
-    });
-  } catch (error) {
-    console.error('Summary generation failed:', error);
-
-    // Popupに通知
-    notifyPopup({
-      action: 'error',
-      error: `要約生成に失敗しました: ${error.message}`
-    });
   }
 }
 
