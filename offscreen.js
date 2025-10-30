@@ -97,35 +97,14 @@ async function handleStopRecording(message) {
     // 時間監視を停止
     stopDurationCheck();
 
-    // 録音停止
-    let audioBlob = await audioRecorder.stop();
-    const totalDuration = audioRecorder.getDuration();
+    // 録音停止（ストリーミング版）
+    // audioRecorder.stop() は内部でチャンクをflushし、recordingCompleteメッセージを送信する
+    const result = await audioRecorder.stop();
 
     console.log('Recording stopped:', {
-      size: audioBlob.size,
-      duration: totalDuration
+      totalChunks: result.totalChunks,
+      duration: result.duration
     });
-
-    // チャンク分割（3分 = 180秒）
-    // 5分録音で約28MBになるため、3分に短縮して25MB制限内に収める
-    console.log('Splitting audio into chunks...');
-    const chunks = await AudioEncoder.splitAudio(audioBlob, 180);
-    console.log(`Audio split into ${chunks.length} chunks`);
-
-    // メモリ解放：元のBlobを破棄
-    audioBlob = null;
-
-    // 各チャンクのBlobをBase64に変換
-    console.log('Converting chunks to Base64...');
-    const chunksData = await Promise.all(
-      chunks.map(async (chunk) => ({
-        index: chunk.index,
-        audioBlob: await blobToBase64(chunk.blob), // Base64に変換
-        startTime: chunk.startTime,
-        duration: chunk.duration,
-        size: chunk.size
-      }))
-    );
 
     // リセット
     audioRecorder = null;
@@ -133,9 +112,7 @@ async function handleStopRecording(message) {
     warningShown = false;
 
     return {
-      success: true,
-      chunks: chunksData,
-      totalDuration: totalDuration
+      success: true
     };
   } catch (error) {
     console.error('Failed to stop recording:', error);

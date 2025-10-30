@@ -1,8 +1,12 @@
 // background.js - バックグラウンドスクリプト
 
+console.log('[Background] Loading background.js...');
+
 // 定数
 const OFFSCREEN_INIT_DELAY = 100; // ms - オフスクリーンドキュメント初期化待機時間
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB - Whisper APIの制限
+
+console.log('[Background] Loading libraries...');
 
 // ライブラリのインポート（Service Workerではimportを使用）
 importScripts(
@@ -14,14 +18,25 @@ importScripts(
   'lib/job-processor.js'
 );
 
+console.log('[Background] All libraries loaded successfully');
+
 // オフスクリーンドキュメントの状態
 let offscreenDocumentCreated = false;
 
 // AudioStorageインスタンス
 const audioStorage = new AudioStorage();
 
+// 録音中のチャンクを保持（ストリーミング用）
+let recordingChunks = [];
+
+// 録音開始時刻（クラッシュ検出用）
+let recordingMetadata = null;
+
 // Keep-Alive機構（Service Workerスリープ防止）
 let keepAliveInterval = null;
+
+// Offscreenクラッシュ監視用
+let offscreenHealthCheckInterval = null;
 
 // Keep-Aliveを開始
 function startKeepAlive() {
@@ -47,6 +62,197 @@ function stopKeepAlive() {
     clearInterval(keepAliveInterval);
     keepAliveInterval = null;
     console.log('Keep-Alive stopped');
+  }
+}
+
+// Offscreenクラッシュ監視を開始
+function startOffscreenHealthCheck() {
+  if (offscreenHealthCheckInterval) {
+    return; // 既に実行中
+  }
+
+  console.log('Starting offscreen health check');
+
+  // 10秒ごとにoffscreenの生存確認
+  offscreenHealthCheckInterval = setInterval(async () => {
+    try {
+      // offscreenが作成されていない場合はスキップ
+      if (!offscreenDocumentCreated) {
+        return;
+      }
+
+      // offscreenドキュメントの存在確認
+      let offscreenExists = false;
+
+      if (chrome.runtime.getContexts) {
+        const existingContexts = await chrome.runtime.getContexts({
+          contextTypes: ['OFFSCREEN_DOCUMENT']
+        });
+        offscreenExists = existingContexts.length > 0;
+      }
+
+      // offscreenが存在しない場合はクラッシュと判断
+      if (!offscreenExists) {
+        console.error('Offscreen document crashed during recording!');
+        await handleOffscreenCrash();
+      }
+    } catch (error) {
+      console.error('Health check failed:', error);
+    }
+  }, 10000); // 10秒ごと
+}
+
+// Offscreenクラッシュ監視を停止
+function stopOffscreenHealthCheck() {
+  if (offscreenHealthCheckInterval) {
+    clearInterval(offscreenHealthCheckInterval);
+    offscreenHealthCheckInterval = null;
+    console.log('Offscreen health check stopped');
+  }
+}
+
+// Offscreenクラッシュ時の処理
+async function handleOffscreenCrash() {
+  try {
+    console.warn('Handling offscreen crash...');
+
+    // 監視を停止
+    stopOffscreenHealthCheck();
+    stopKeepAlive();
+
+    // フラグを更新
+    offscreenDocumentCreated = false;
+
+    // チャンクが1つでもあれば部分的に保存
+    if (recordingChunks.length > 0) {
+      console.log(`Attempting to recover ${recordingChunks.length} chunks...`);
+
+      // 設定を読み込み
+      const settings = await Storage.loadSettings();
+
+      if (!settings.apiKey) {
+        console.error('Cannot recover: API key not set');
+        recordingChunks = [];
+        recordingMetadata = null;
+        await chrome.storage.local.set({
+          isRecording: false,
+          recordingStartTime: null
+        });
+
+        // ユーザーに通知
+        notifyPopup({
+          action: 'recordingCrashed',
+          recovered: false,
+          reason: 'APIキーが設定されていません'
+        });
+        return;
+      }
+
+      // チャンクをインデックス順にソート
+      recordingChunks.sort((a, b) => a.index - b.index);
+
+      // プラットフォーム検出
+      const platform = await detectPlatform();
+
+      // タイトル生成
+      const dateStr = new Date().toLocaleString('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      // 録音時間を計算（チャンク数 × 30秒）
+      const estimatedDuration = recordingChunks.length * 30;
+
+      // 合計サイズを計算
+      const totalSize = recordingChunks.reduce((sum, chunk) => sum + chunk.size, 0);
+
+      // 文字起こし結果を作成（部分データ）
+      const transcript = Storage.createTranscript({
+        title: `${dateStr} (部分データ)`,
+        duration: estimatedDuration,
+        audioSize: totalSize,
+        platform: platform,
+        audioStored: false,
+        status: 'processing',
+        error: '録音中に予期しないエラーが発生しました。最後の30秒分のデータが失われた可能性があります。'
+      });
+
+      // 保存
+      await Storage.saveTranscript(transcript);
+
+      // ジョブをキューに追加
+      await JobQueue.addJob({
+        transcriptId: transcript.id,
+        chunks: recordingChunks.map(chunk => ({
+          audioBlob: chunk.audioBlob,
+          timestamp: chunk.timestamp,
+          size: chunk.size,
+          index: chunk.index,
+          mimeType: chunk.mimeType
+        })),
+        metadata: {
+          title: transcript.title,
+          duration: estimatedDuration,
+          platform: platform,
+          audioSize: totalSize,
+          partial: true
+        }
+      });
+
+      console.log(`Partial data recovered: ${recordingChunks.length} chunks saved to job queue`);
+
+      // ジョブプロセッサーを起動
+      startJobProcessor();
+
+      // ユーザーに通知
+      notifyPopup({
+        action: 'recordingCrashed',
+        recovered: true,
+        transcriptId: transcript.id,
+        chunksRecovered: recordingChunks.length,
+        estimatedDuration: estimatedDuration
+      });
+    } else {
+      console.warn('No chunks to recover');
+
+      // ユーザーに通知
+      notifyPopup({
+        action: 'recordingCrashed',
+        recovered: false,
+        reason: '保存されたデータがありません'
+      });
+    }
+
+    // クリーンアップ
+    recordingChunks = [];
+    recordingMetadata = null;
+
+    // 録音状態をクリア
+    await chrome.storage.local.set({
+      isRecording: false,
+      recordingStartTime: null
+    });
+  } catch (error) {
+    console.error('Failed to handle offscreen crash:', error);
+
+    // クリーンアップ
+    recordingChunks = [];
+    recordingMetadata = null;
+
+    await chrome.storage.local.set({
+      isRecording: false,
+      recordingStartTime: null
+    });
+
+    // ユーザーに通知
+    notifyPopup({
+      action: 'recordingCrashed',
+      recovered: false,
+      reason: error.message
+    });
   }
 }
 
@@ -305,6 +511,12 @@ async function handleMessage(message, sender) {
       case 'recordingAutoStop':
         return await handleRecordingAutoStop(message);
 
+      case 'saveRecordingChunk':
+        return await handleSaveRecordingChunk(message);
+
+      case 'recordingComplete':
+        return await handleRecordingComplete(message);
+
       case 'ping':
         // Keep-Alive用のpingメッセージ（何もしない）
         return { success: true, pong: true };
@@ -361,8 +573,17 @@ async function handleStartRecording(message) {
 
     console.log('Recording started in offscreen document');
 
+    // 録音メタデータを保存
+    recordingMetadata = {
+      deviceId: settings.recordingDevice,
+      startTime: Date.now()
+    };
+
     // Keep-Aliveを開始（Service Workerスリープ防止）
     startKeepAlive();
+
+    // Offscreenクラッシュ監視を開始
+    startOffscreenHealthCheck();
 
     // 録音状態を永続化
     await chrome.storage.local.set({
@@ -376,8 +597,11 @@ async function handleStartRecording(message) {
   } catch (error) {
     console.error('Failed to start recording:', error);
 
-    // エラー時はKeep-Aliveを停止
+    // エラー時はクリーンアップ
     stopKeepAlive();
+    stopOffscreenHealthCheck();
+    recordingChunks = [];
+    recordingMetadata = null;
 
     // 録音状態をクリア
     await chrome.storage.local.set({
@@ -406,73 +630,21 @@ async function handleStopRecording(message) {
       throw new Error(response.error || '録音の停止に失敗しました');
     }
 
-    const { chunks, totalDuration } = response;
+    console.log(`Recording stop request sent to offscreen, waiting for completion...`);
 
-    console.log(`Recording stopped, received ${chunks.length} chunks`);
-
-    // 設定を読み込み
-    const settings = await Storage.loadSettings();
-
-    if (!settings.apiKey) {
-      throw new Error('APIキーが設定されていません。設定画面でAPIキーを入力してください。');
-    }
-
-    // プラットフォーム検出
-    const platform = await detectPlatform();
-
-    // タイトル生成（日付のみ、秒数なし）
-    const dateStr = new Date().toLocaleString('ja-JP', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-
-    // 文字起こし結果を作成（処理中状態）
-    const transcript = Storage.createTranscript({
-      title: dateStr,
-      duration: totalDuration,
-      audioSize: chunks.reduce((sum, chunk) => sum + chunk.size, 0),
-      platform: platform,
-      audioStored: false  // チャンク分割の場合は音声を保存しない
-    });
-
-    // 保存
-    await Storage.saveTranscript(transcript);
-
-    // ジョブをキューに追加
-    await JobQueue.addJob({
-      transcriptId: transcript.id,
-      chunks: chunks,
-      metadata: {
-        title: transcript.title,
-        duration: totalDuration,
-        platform: platform,
-        audioSize: transcript.audioSize
-      }
-    });
-
-    console.log(`Job added to queue: ${transcript.id}`);
-
-    // 録音状態をクリア
-    await chrome.storage.local.set({
-      isRecording: false,
-      recordingStartTime: null
-    });
-
-    // オフスクリーンドキュメントを閉じる
-    await closeOffscreenDocument();
-
-    // ジョブプロセッサーを起動（キューにジョブがあれば処理開始）
-    startJobProcessor();
-
+    // 実際の処理はhandleRecordingCompleteで行われる
+    // ここでは停止指示を送ったことを返すだけ
     return {
-      success: true,
-      transcriptId: transcript.id
+      success: true
     };
   } catch (error) {
     console.error('Failed to stop recording:', error);
+
+    // エラー時はクリーンアップ
+    recordingChunks = [];
+    recordingMetadata = null;
+    stopKeepAlive();
+    stopOffscreenHealthCheck();
 
     // 録音状態をクリア
     await chrome.storage.local.set({
@@ -814,6 +986,146 @@ async function handleRecordingAutoStop(message) {
       success: false,
       error: error.message
     };
+  }
+}
+
+// 録音チャンク保存（ストリーミング）
+async function handleSaveRecordingChunk(message) {
+  try {
+    const { chunkData } = message;
+
+    if (!chunkData) {
+      throw new Error('chunkData is required');
+    }
+
+    // チャンクを配列に追加
+    recordingChunks.push(chunkData);
+
+    console.log(`Chunk ${chunkData.index} saved (${chunkData.size} bytes), total chunks: ${recordingChunks.length}`);
+
+    return {
+      success: true,
+      totalChunks: recordingChunks.length
+    };
+  } catch (error) {
+    console.error('Failed to save recording chunk:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// 録音完了（ストリーミング）
+async function handleRecordingComplete(message) {
+  try {
+    const { data } = message;
+    const { totalChunks, duration } = data;
+
+    console.log(`Recording complete: ${totalChunks} chunks, ${duration} seconds`);
+
+    // チャンクが1つもない場合はエラー
+    if (recordingChunks.length === 0) {
+      throw new Error('録音データがありません');
+    }
+
+    // チャンクをインデックス順にソート（念のため）
+    recordingChunks.sort((a, b) => a.index - b.index);
+
+    // 設定を読み込み
+    const settings = await Storage.loadSettings();
+
+    if (!settings.apiKey) {
+      throw new Error('APIキーが設定されていません。設定画面でAPIキーを入力してください。');
+    }
+
+    // プラットフォーム検出
+    const platform = await detectPlatform();
+
+    // タイトル生成（日付のみ、秒数なし）
+    const dateStr = new Date().toLocaleString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    // 合計サイズを計算
+    const totalSize = recordingChunks.reduce((sum, chunk) => sum + chunk.size, 0);
+
+    // 文字起こし結果を作成（処理中状態）
+    const transcript = Storage.createTranscript({
+      title: dateStr,
+      duration: duration,
+      audioSize: totalSize,
+      platform: platform,
+      audioStored: false  // チャンク分割の場合は音声を保存しない
+    });
+
+    // 保存
+    await Storage.saveTranscript(transcript);
+
+    // ジョブをキューに追加（チャンクデータを渡す）
+    await JobQueue.addJob({
+      transcriptId: transcript.id,
+      chunks: recordingChunks.map(chunk => ({
+        audioBlob: chunk.audioBlob,
+        timestamp: chunk.timestamp,
+        size: chunk.size,
+        index: chunk.index,
+        mimeType: chunk.mimeType
+      })),
+      metadata: {
+        title: transcript.title,
+        duration: duration,
+        platform: platform,
+        audioSize: totalSize
+      }
+    });
+
+    console.log(`Job added to queue: ${transcript.id}`);
+
+    // チャンク配列をクリア（メモリ解放）
+    recordingChunks = [];
+    recordingMetadata = null;
+
+    // 監視を停止
+    stopKeepAlive();
+    stopOffscreenHealthCheck();
+
+    // 録音状態をクリア
+    await chrome.storage.local.set({
+      isRecording: false,
+      recordingStartTime: null
+    });
+
+    // オフスクリーンドキュメントを閉じる
+    await closeOffscreenDocument();
+
+    // ジョブプロセッサーを起動（キューにジョブがあれば処理開始）
+    startJobProcessor();
+
+    return {
+      success: true,
+      transcriptId: transcript.id
+    };
+  } catch (error) {
+    console.error('Failed to handle recording complete:', error);
+
+    // エラー時もクリーンアップ
+    recordingChunks = [];
+    recordingMetadata = null;
+    stopKeepAlive();
+    stopOffscreenHealthCheck();
+
+    // 録音状態をクリア
+    await chrome.storage.local.set({
+      isRecording: false,
+      recordingStartTime: null
+    });
+
+    throw error;
   }
 }
 

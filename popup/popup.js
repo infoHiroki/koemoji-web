@@ -30,7 +30,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   console.log('Popup initialized');
   await loadHistory();
   await checkRecordingStatus(); // 録音状態を確認
+  await checkCompletedTranscripts(); // 完了済みtranscriptをチェック
   setupEventListeners();
+  setupStorageListener(); // Storage変更リスナーを設定
 });
 
 // 録音状態を確認（ポップアップ再オープン時）
@@ -70,6 +72,36 @@ async function checkRecordingStatus() {
   }
 }
 
+// 完了済みtranscriptをチェック（Popup再オープン時）
+async function checkCompletedTranscripts() {
+  try {
+    const result = await chrome.storage.local.get(['lastCompletedTranscriptId', 'lastViewedTranscriptId']);
+
+    if (result.lastCompletedTranscriptId &&
+        result.lastCompletedTranscriptId !== result.lastViewedTranscriptId) {
+      console.log('New completed transcript detected:', result.lastCompletedTranscriptId);
+
+      // 履歴を再読み込み
+      await loadHistory();
+
+      // 既読フラグを更新
+      await chrome.storage.local.set({
+        lastViewedTranscriptId: result.lastCompletedTranscriptId
+      });
+
+      // 通知
+      if (!isRecording) {
+        statusText.textContent = '新しい処理が完了しました';
+        setTimeout(() => {
+          statusText.textContent = '準備完了';
+        }, 3000);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to check completed transcripts:', error);
+  }
+}
+
 // イベントリスナーの設定
 function setupEventListeners() {
   // 録音制御
@@ -87,6 +119,34 @@ function setupEventListeners() {
 
   // メッセージリスナー
   chrome.runtime.onMessage.addListener(handleMessage);
+}
+
+// Storage変更リスナーの設定
+function setupStorageListener() {
+  // chrome.storage.localの変更を監視
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local') {
+      // transcriptsが更新された場合、履歴を再読み込み
+      if (changes.transcripts) {
+        console.log('Transcripts updated, reloading history...');
+        loadHistory();
+      }
+
+      // 完了通知フラグを検出（Popupが開いている間に完了した場合）
+      if (changes.lastCompletedTranscriptId) {
+        console.log('Transcript completed:', changes.lastCompletedTranscriptId.newValue);
+        loadHistory();
+
+        // UIステータスを更新
+        if (!isRecording) {
+          statusText.textContent = '処理完了';
+          setTimeout(() => {
+            statusText.textContent = '準備完了';
+          }, 3000);
+        }
+      }
+    }
+  });
 }
 
 // 録音開始
@@ -236,6 +296,27 @@ async function loadHistory() {
   }
 }
 
+// 文字起こし結果の表示内容を決定
+function getTranscriptDisplay(transcript) {
+  // statusに基づいて適切なメッセージを表示
+  if (transcript.status === 'processing') {
+    return '処理中...';
+  }
+
+  // transcriptが存在するか確認（空文字列、null、undefinedをチェック）
+  if (transcript.transcript && transcript.transcript.trim().length > 0) {
+    // エラーメッセージの場合
+    if (transcript.transcript.startsWith('エラー:')) {
+      return escapeHtml(transcript.transcript);
+    }
+    // 正常な文字起こし結果
+    return escapeHtml(transcript.transcript);
+  }
+
+  // データがない場合
+  return '文字起こし結果がありません';
+}
+
 // 履歴表示
 function displayHistory(transcripts) {
   if (transcripts.length === 0) {
@@ -302,7 +383,7 @@ function displayHistory(transcripts) {
                 コピー
               </button>
             </div>
-            <div class="history-transcript-text">${escapeHtml(transcript.transcript || '文字起こし結果がありません')}</div>
+            <div class="history-transcript-text">${getTranscriptDisplay(transcript)}</div>
           </div>
           ${summaryHtml}
           <div class="history-item-actions">
@@ -663,6 +744,9 @@ function handleMessage(message, sender, sendResponse) {
     case 'recordingAutoStop':
       handleRecordingAutoStop(message);
       break;
+    case 'recordingCrashed':
+      handleRecordingCrashed(message);
+      break;
     case 'error':
       showError(message.error);
       break;
@@ -839,4 +923,44 @@ function handleRecordingAutoStop(message) {
     `録音時間が3時間（${minutes}分）に達したため、自動的に停止されました。\n\n` +
     `文字起こし処理が開始されます。`
   );
+}
+
+// 録音クラッシュ
+function handleRecordingCrashed(message) {
+  // 録音停止状態に更新
+  isRecording = false;
+  updateRecordingUI(false);
+
+  if (message.recovered) {
+    // 部分的なデータが復旧された場合
+    const minutes = Math.floor(message.estimatedDuration / 60);
+    const seconds = message.estimatedDuration % 60;
+
+    statusText.textContent = '⚠️ 録音が中断されましたが、部分データを復旧しました';
+
+    alert(
+      `⚠️ 録音が予期せず中断されました\n\n` +
+      `復旧されたデータ：\n` +
+      `・チャンク数: ${message.chunksRecovered}個\n` +
+      `・推定時間: ${minutes}分${seconds}秒\n\n` +
+      `最後の30秒分のデータが失われた可能性がありますが、\n` +
+      `それ以前のデータは正常に保存されました。\n\n` +
+      `文字起こし処理が開始されます。`
+    );
+
+    // 履歴を更新
+    loadHistory();
+  } else {
+    // データが復旧できなかった場合
+    statusText.textContent = '⚠️ 録音が中断され、データを復旧できませんでした';
+
+    const reason = message.reason || '不明なエラー';
+
+    alert(
+      `❌ 録音が予期せず中断されました\n\n` +
+      `原因: ${reason}\n\n` +
+      `データを復旧できませんでした。\n` +
+      `録音を再度お試しください。`
+    );
+  }
 }

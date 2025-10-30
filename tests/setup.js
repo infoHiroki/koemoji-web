@@ -17,6 +17,9 @@ global.chrome = {
     openOptionsPage: jest.fn()
   },
   storage: {
+    onChanged: {
+      addListener: jest.fn()
+    },
     sync: {
       get: jest.fn((keys) => {
         if (typeof keys === 'string') {

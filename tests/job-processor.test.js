@@ -16,6 +16,19 @@ describe('JobProcessor', () => {
     jest.clearAllMocks();
     JobProcessor.isRunning = false;
     JobProcessor.currentJobId = null;
+
+    // テスト用に依存関係を注入
+    JobProcessor._dependencies = {
+      JobQueue,
+      OpenAIClient,
+      Storage
+    };
+  });
+
+  // 各テスト後にクリーンアップ
+  afterEach(() => {
+    // 依存関係の注入をクリア
+    JobProcessor._dependencies = null;
   });
 
   // テスト後もクリーンアップ
@@ -444,6 +457,137 @@ describe('JobProcessor', () => {
 
       expect(job1.status).toBe(JobQueue.STATUS.FAILED);
       expect(job2.status).toBe(JobQueue.STATUS.COMPLETED);
+    });
+  });
+
+  describe('完了通知フラグ（lastCompletedTranscriptId）', () => {
+    beforeEach(() => {
+      // chrome.storage.local.setのモックを初期化
+      global.chrome.storage.local.set = jest.fn().mockResolvedValue();
+    });
+
+    test('文字起こし完了時にlastCompletedTranscriptIdが書き込まれる', async () => {
+      const settings = {
+        apiKey: 'sk-test',
+        language: 'ja',
+        autoSummarize: false
+      };
+
+      const jobId = await JobQueue.addJob({
+        transcriptId: 'test-transcript-001',
+        chunks: [
+          { index: 0, audioBlob: 'data:audio/wav;base64,AAAA', startTime: 0, duration: 180000 }
+        ],
+        metadata: {
+          title: 'Test',
+          duration: 180
+        }
+      });
+
+      const job = await JobQueue.getJob(jobId);
+
+      // モックの設定
+      OpenAIClient.prototype.transcribe = jest.fn().mockResolvedValue({ text: 'テスト文字起こし' });
+      Storage.updateTranscript = jest.fn().mockResolvedValue();
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          blob: () => Promise.resolve(new Blob(['test'], { type: 'audio/wav' }))
+        })
+      );
+
+      // ジョブ処理を実行
+      await JobProcessor.processJob(job, settings);
+
+      // lastCompletedTranscriptIdが書き込まれたか確認
+      expect(global.chrome.storage.local.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lastCompletedTranscriptId: 'test-transcript-001',
+          lastCompletedTimestamp: expect.any(Number)
+        })
+      );
+    });
+
+    test('要約完了時にlastCompletedTranscriptIdが書き込まれる', async () => {
+      const settings = {
+        apiKey: 'sk-test',
+        language: 'ja',
+        autoSummarize: true,
+        summaryModel: 'gpt-4',
+        summaryPrompt: 'カスタムプロンプト'
+      };
+
+      const jobId = await JobQueue.addJob({
+        transcriptId: 'test-transcript-002',
+        chunks: [
+          { index: 0, audioBlob: 'data:audio/wav;base64,AAAA', startTime: 0, duration: 180000 }
+        ],
+        metadata: {
+          title: 'Test',
+          duration: 180
+        }
+      });
+
+      const job = await JobQueue.getJob(jobId);
+
+      // モックの設定
+      OpenAIClient.prototype.transcribe = jest.fn().mockResolvedValue({ text: 'テスト文字起こし' });
+      OpenAIClient.prototype.summarize = jest.fn().mockResolvedValue({ summary: 'テスト要約' });
+      Storage.updateTranscript = jest.fn().mockResolvedValue();
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          blob: () => Promise.resolve(new Blob(['test'], { type: 'audio/wav' }))
+        })
+      );
+
+      // ジョブ処理を実行
+      await JobProcessor.processJob(job, settings);
+
+      // lastCompletedTranscriptIdが要約完了時にも書き込まれたか確認
+      const calls = global.chrome.storage.local.set.mock.calls;
+      const hasSummaryFlag = calls.some(call =>
+        call[0].lastCompletedTranscriptId === 'test-transcript-002'
+      );
+      expect(hasSummaryFlag).toBe(true);
+    });
+
+    test('ジョブ完了時にlastCompletedTranscriptIdが最終的に書き込まれる', async () => {
+      const settings = {
+        apiKey: 'sk-test',
+        language: 'ja',
+        autoSummarize: false
+      };
+
+      const jobId = await JobQueue.addJob({
+        transcriptId: 'test-transcript-003',
+        chunks: [
+          { index: 0, audioBlob: 'data:audio/wav;base64,AAAA', startTime: 0, duration: 180000 }
+        ],
+        metadata: {
+          title: 'Test',
+          duration: 180
+        }
+      });
+
+      const job = await JobQueue.getJob(jobId);
+
+      // モックの設定
+      OpenAIClient.prototype.transcribe = jest.fn().mockResolvedValue({ text: 'テスト文字起こし' });
+      Storage.updateTranscript = jest.fn().mockResolvedValue();
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          blob: () => Promise.resolve(new Blob(['test'], { type: 'audio/wav' }))
+        })
+      );
+
+      // ジョブ処理を実行
+      await JobProcessor.processJob(job, settings);
+
+      // lastCompletedTranscriptIdが少なくとも2回書き込まれたか確認
+      // （文字起こし完了時 + ジョブ完了時）
+      const setCallsWithFlag = global.chrome.storage.local.set.mock.calls.filter(call =>
+        call[0].lastCompletedTranscriptId === 'test-transcript-003'
+      );
+      expect(setCallsWithFlag.length).toBeGreaterThanOrEqual(2);
     });
   });
 });
